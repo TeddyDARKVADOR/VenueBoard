@@ -1,0 +1,25 @@
+# Modules Node
+node_modules/
+
+# Dossier de build
+dist/
+
+# Réglages VS Code
+.vscode/
+
+# Fichiers de log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Variables d’environnement
+.env
+.env.*.local
+
+# Caches et rapports de tests
+.cache/
+coverage/
+
+# Fichiers système / temporaires
+.DS_Store
+Thumbs.db
