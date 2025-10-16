@@ -11,7 +11,7 @@ test("base 12h", () => {
     new Date(2025, 1, 1, 12, 15, 0),
     new Date(2025, 1, 1, 12, 30, 0),
   ]);
-}); 
+});
 
 test("base 12h05", () => {
   const start = new Date(2025, 1, 1, 12, 5, 0);
