@@ -1,11 +1,11 @@
-type User = {
+export type User = {
   id: number;
   name: string;
   login: string;
   yob: number;
 };
 
-function users_add(users: User[], user_without_id: Omit<User, "id">) {
+export function users_add(users: User[], user_without_id: Omit<User, "id">) {
   const next_id =
     users.reduce((biggest_id, curr) => {
       if (curr.id > biggest_id) {
@@ -16,17 +16,17 @@ function users_add(users: User[], user_without_id: Omit<User, "id">) {
   users.push({ id: next_id, ...user_without_id });
 }
 
-function users_get(users: User[], input: User["id"] | User["login"]) {
+export function users_get(users: User[], input: User["id"] | User["login"]) {
   return (
     users.find((user) => input === user.id || input === user.login) ?? null
   );
 }
 
-function users_logins(users: User[]) {
+export function users_logins(users: User[]) {
   return users.map((user) => user.login);
 }
 
-function users_names_by_birth_year(users: User[]) {
+export function users_names_by_birth_year(users: User[]) {
   return users
     .sort((curr, prev) => curr.yob - prev.yob)
     .map((user) => {
