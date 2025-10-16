@@ -1,4 +1,4 @@
-function mk_login(fullName: string) {
+export function mk_login(fullName: string) {
   return fullName
     .trim()
     .normalize("NFD")
