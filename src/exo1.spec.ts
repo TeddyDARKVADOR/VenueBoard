@@ -16,7 +16,6 @@ test("add sum", () => {
   const result = toto_narrow(arr);
   expect(arr).toEqual([1, 2, 3, 6]);
   expect(result).toBeNull();
-  
 });
 
 test("add string", () => {
