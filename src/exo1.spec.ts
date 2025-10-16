@@ -24,3 +24,4 @@ test("add string", () => {
   expect(arr).toEqual(["a", "b", "je suis une chaîne supplémentaire"]);
   expect(result).toBeNull();
 });
+
