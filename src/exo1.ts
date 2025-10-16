@@ -9,7 +9,7 @@ function toto_narrow(input: string | number | string[] | number[]) {
     }
   } else {
     if (typeof input === "number") {
-     return input + 12;
+      return input + 12;
     } else {
       return input.concat(" bonjour!");
     }
