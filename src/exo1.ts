@@ -16,6 +16,6 @@ export function toto_narrow(input: string | number | string[] | number[]) {
   }
 }
 
-export function is_str_array(x: any[]): x is string[] {
+function is_str_array(x: unknown[]): x is string[] {
   return !x.find((elem) => typeof elem !== "string");
 }
