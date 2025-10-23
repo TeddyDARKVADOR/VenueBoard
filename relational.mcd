@@ -1,14 +1,19 @@
 %%mocodo
 :::
-User_Profile: id, name, role, #id 2 > User_Auth > id
-:::
 User_Auth: id, login, password
-:::
+:::::::
+
+
+:::::
+User_Profile: id, name, role, #id 2 > User_Auth > id
+:::::
 
 
 :::::
 Run: #id 1 > Activity > id, _#id 2 > User_Profile > id
-:::::
+:
+Register: #id 1 > Activity > id, _#id 2 > User_Profile > id
+:::
 
 
 :

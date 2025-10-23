@@ -1,9 +1,11 @@
-UserProfile: id, name, role
-Relate, 11 UserProfile, 11 UserAuth
 UserAuth: id,  login, password
+Relate, 11 UserProfile, 11 UserAuth
+
+UserProfile: id, name, role
 
 Create, 11 Event, 0N UserProfile
 Run, 1N Activity, 0N UserProfile
+Register, 0N Activity, 0N UserProfile
 
 Event: id, name, description, start, end
 Include, 0N Event, 11 Activity
