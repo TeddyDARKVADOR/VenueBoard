@@ -1,6 +1,8 @@
 import argon2 from "argon2";
-import postgres from "postgres";
+import postgres, { PostgresError } from "postgres";
 import type { UserAuth } from "./models.js";
+import type { Room } from "./models.js";
+import { id } from "date-fns/locale";
 
 export class Repository {
   sql: postgres.Sql;
@@ -32,6 +34,21 @@ export class Repository {
     (${newUserAuth.user_auth_login}, ${hash})
     returning user_auth_login, user_auth_password`;
     return result;
+  }
+
+  async createRoom(newRoom: Omit<Room, "room_id">) {
+    try {
+    const result = await this.sql`
+    INSERT INTO room
+    (room_name, room_location, room_capacity)
+    VALUES
+    (${newRoom.room_name}, ${newRoom.room_location}, ${newRoom.room_capacity})
+    RETURNING room_id, room_name, room_location, room_capacity`;
+    return result;
+    } catch (err) {
+    const error = err as PostgresError
+    throw error
+    }
   }
 
   async end() {

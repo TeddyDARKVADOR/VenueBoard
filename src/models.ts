@@ -10,3 +10,10 @@ export type UserProfile = {
   user_profile_role: string;
   ref_suer_auth_id: number;
 };
+
+export type Room = {
+  room_id: number;
+  room_name: string;
+  room_location: string;
+  room_capacity: number;
+};
