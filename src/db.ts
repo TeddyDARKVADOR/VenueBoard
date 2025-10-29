@@ -1,7 +1,7 @@
 import postgres from "postgres";
 import argon2 from "argon2";
 import type { PostgresError } from "postgres";
-import type { UserAuth } from "./models.js";
+import type { UserAuth, UserProfile } from "./models.js";
 
 const ARGON2OPTS = {
   type: argon2.argon2id,
@@ -50,6 +50,8 @@ export class Repository {
       throw error;
     }
   }
+
+  // ----- UserAuth -----
 
   async createUserAuth(newUserAuth: Omit<UserAuth, "user_auth_id">) {
     const hash = await argon2.hash(newUserAuth.user_auth_password, ARGON2OPTS);
@@ -143,6 +145,87 @@ export class Repository {
       const res = await argon2.verify(storedHash, user.user_auth_password);
       return res;
     } catch (err: unknown) {
+      const error = err as PostgresError;
+      throw error;
+    }
+  }
+
+  // ----- UserProfile -----
+
+  async createUserProfile(
+    newUserProfile: Omit<UserProfile, "user_profile_id">,
+  ) {
+    try {
+      const res = await this.sql`
+      INSERT INTO user_profile
+      (user_profile_name, user_profile_role, ref_user_auth_id)
+      VALUES
+      (${newUserProfile.user_profile_name}, ${newUserProfile.user_profile_role}, ${newUserProfile.ref_user_auth_id})
+      RETURNING user_profile_id, user_profile_name, user_profile_role, ref_user_auth_id`;
+      return res;
+    } catch (err) {
+      const error = err as PostgresError;
+      throw error;
+    }
+  }
+
+  async readAllUserProfile() {
+    try {
+      const res = await this.sql`
+      SELECT *
+      FROM user_profile`;
+      return res;
+    } catch (err) {
+      const error = err as PostgresError;
+      throw error;
+    }
+  }
+
+  async readUserProfileById(id: number) {
+    try {
+      const res = await this.sql`
+      SELECT *
+      FROM user_profile
+      WHERE user_profile_id = ${id}`;
+      return res;
+    } catch (err) {
+      const error = err as PostgresError;
+      throw error;
+    }
+  }
+
+  async updateUserProfileById(
+    id: number,
+    partialUserProfile: Partial<Omit<UserProfile, "user_profile_id">>,
+  ) {
+    const name = partialUserProfile.user_profile_name ?? null;
+    const role = partialUserProfile.user_profile_role ?? null;
+    const ref = partialUserProfile.ref_user_auth_id ?? null;
+    try {
+      const res = await this.sql`
+      UPDATE user_profile
+      SET
+      user_profile_name = COALESCE(${name}, user_profile_name),
+      user_profile_role = COALESCE(${role}, user_profile_role),
+      ref_user_auth_id = COALESCE(${ref}, ref_user_auth_id)
+      WHERE user_profile_id = ${id}
+      RETURNING user_profile_id, user_profile_name, user_profile_role, ref_user_auth_id
+      `;
+      return res;
+    } catch (err) {
+      const error = err as PostgresError;
+      throw error;
+    }
+  }
+
+  async deleteUserProfileById(id: number) {
+    try {
+      const res = await this.sql`
+      DELETE FROM user_profile
+      WHERE user_profile_id = ${id}
+      RETURNING user_profile_id, user_profile_name, user_profile_role, ref_user_auth_id`;
+      return res;
+    } catch (err) {
       const error = err as PostgresError;
       throw error;
     }
