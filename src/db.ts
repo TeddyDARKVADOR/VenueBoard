@@ -51,6 +51,19 @@ export class Repository {
     }
   }
 
+    async readRoom(readRoomById: number) {
+    try {
+    const result = await this.sql`
+    SELECT * FROM room 
+    WHERE id = ${readRoomById}`
+    return result;      
+    } catch (err){
+    const error = err as PostgresError
+    throw error
+    }
+    
+  }
+
   async end() {
     return this.sql.end();
   }
