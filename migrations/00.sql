@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS user_auth (
   user_auth_id SERIAL PRIMARY KEY,
-  user_auth_login TEXT NOT NULL,
+  user_auth_login TEXT NOT NULL UNIQUE,
   user_auth_password TEXT NOT NULL
 );
 
