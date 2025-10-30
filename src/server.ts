@@ -1,16 +1,16 @@
 import Fastify from "fastify";
-import {
-  type OperationId,
-  ZKindAndOperands,
-  ZOperationId,
-  type KindAndOperands,
-} from "./models.js";
-import { OpeRepo } from "./Operation.js";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
   serializerCompiler,
   validatorCompiler,
 } from "fastify-type-provider-zod";
-import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import {
+  type KindAndOperands,
+  type OperationId,
+  ZKindAndOperands,
+  ZOperationId,
+} from "./models.js";
+import { OpeRepo } from "./Operation.js";
 
 function start_web_server() {
   const web_server = Fastify({
