@@ -10,3 +10,9 @@ export type UserProfile = {
   user_profile_role: string;
   user_auth_id: number;
 };
+
+export type Register = {
+  register_id: number;
+  user_profile_id: number;
+  activity_id: number;
+};

@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import postgres from "postgres";
-import type { UserAuth, UserProfile } from "./models.js";
+import type { Register, UserAuth, UserProfile } from "./models.js";
 
 const ARGON2OPTS = {
   type: argon2.argon2id,
@@ -136,6 +136,52 @@ export class Repository {
       DELETE FROM user_profile
       WHERE user_profile_id = ${id}
       RETURNING *`;
+  }
+
+  //----- Register -----
+
+  async createRegister(register: Omit<Register, "register_id">) {
+    return await this.sql`
+    INSERT INTO register
+    (user_profile_id, activity_id)
+    VALUES
+    (${register.user_profile_id} , ${register.activity_id})
+    RETURNING *`;
+  }
+
+  async readAllRegister() {
+    return await this.sql`
+    SELECT *
+    FROM register`;
+  }
+
+  async readRegisterById(id: number) {
+    return await this.sql`
+    SELECT *
+    FROM register
+    WHERE register_id = ${id}`;
+  }
+
+  async updateRegisterById(
+    id: number,
+    update: Partial<Omit<Register, "register_id">>,
+  ) {
+    const user_profile_id = update.user_profile_id ?? null;
+    const activity_id = update.activity_id ?? null;
+    return await this.sql`
+    UPDATE register
+    SET
+    user_profile_id = COALESCE(${user_profile_id}, user_profile_id),
+    activity_id = COALESCE(${activity_id}, activity_id)
+    WHERE register_id = ${id}
+    RETURNING *`;
+  }
+
+  async deleteRegisterById(id: number) {
+    return await this.sql`
+    DELETE FROM register
+    WHERE register_id = ${id}
+    RETURNING *`;
   }
 
   async end() {
