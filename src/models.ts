@@ -68,8 +68,8 @@ export const ZRun = z.object({
 export type Run = z.infer<typeof ZRun>;
 
 export const ZEventWithActivities = z.object({
-  event: z.object(ZEvent),
-  activities: z.object(ZActivity[]),
+  event: ZEvent,
+  activities: ZActivity.array(),
 });
 
 export type EventWithActivities = z.infer<typeof ZEventWithActivities>;
