@@ -93,12 +93,12 @@ export class Repository {
   ) {
     return await this.sql`
       INSERT INTO user_profile
-      (user_profile_name, user_profile_role, ref_user_auth_id)
+      (user_profile_name, user_profile_role, user_auth_id)
       VALUES
       (${newUserProfile.user_profile_name},
       ${newUserProfile.user_profile_role},
-      ${newUserProfile.ref_user_auth_id})
-      RETURNING user_profile_id, user_profile_name, user_profile_role, ref_user_auth_id`;
+      ${newUserProfile.user_auth_id})
+      RETURNING user_profile_id, user_profile_name, user_profile_role, user_auth_id`;
   }
 
   async readAllUserProfile() {
@@ -120,15 +120,15 @@ export class Repository {
   ) {
     const name = partialUserProfile.user_profile_name ?? null;
     const role = partialUserProfile.user_profile_role ?? null;
-    const ref = partialUserProfile.ref_user_auth_id ?? null;
+    const ref = partialUserProfile.user_auth_id ?? null;
     return await this.sql`
       UPDATE user_profile
       SET
       user_profile_name = COALESCE(${name}, user_profile_name),
       user_profile_role = COALESCE(${role}, user_profile_role),
-      ref_user_auth_id = COALESCE(${ref}, ref_user_auth_id)
+      user_auth_id = COALESCE(${ref}, user_auth_id)
       WHERE user_profile_id = ${id}
-      RETURNING user_profile_id, user_profile_name, user_profile_role, ref_user_auth_id
+      RETURNING user_profile_id, user_profile_name, user_profile_role, user_auth_id
       `;
   }
 
@@ -136,7 +136,7 @@ export class Repository {
     return await this.sql`
       DELETE FROM user_profile
       WHERE user_profile_id = ${id}
-      RETURNING user_profile_id, user_profile_name, user_profile_role, ref_user_auth_id`;
+      RETURNING user_profile_id, user_profile_name, user_profile_role, user_auth_id`;
   }
 
   async end() {

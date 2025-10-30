@@ -35,7 +35,7 @@ try {
     await repo.createUserProfile({
       user_profile_name: "tkt",
       user_profile_role: "super-admin",
-      ref_user_auth_id: 5,
+      user_auth_id: 5,
     }),
   );
   console.log("readAllUserProfile: ", await repo.readAllUserProfile());

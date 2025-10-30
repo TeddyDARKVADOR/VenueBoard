@@ -8,5 +8,5 @@ export type UserProfile = {
   user_profile_id: number;
   user_profile_name: string;
   user_profile_role: string;
-  ref_user_auth_id: number;
+  user_auth_id: number;
 };
