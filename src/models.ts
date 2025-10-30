@@ -16,3 +16,24 @@ export type Register = {
   user_profile_id: number;
   activity_id: number;
 };
+
+export type Event = {
+  event_id: number;
+  event_name: string;
+  event_description: string;
+  event_start: Date;
+  event_end: Date;
+  user_profile_id: number;
+};
+
+export type Activity = {
+  activity_id: number;
+  activity_name: string;
+  activity_description: string;
+  activity_start: Date;
+  activity_end: Date;
+  activity_real_start: Date | null;
+  activity_real_end: Date | null;
+  event_id: number;
+  room_id: number;
+};

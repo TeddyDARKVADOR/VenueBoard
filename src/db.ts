@@ -1,6 +1,12 @@
 import argon2 from "argon2";
 import postgres from "postgres";
-import type { Register, UserAuth, UserProfile } from "./models.js";
+import type {
+  UserAuth,
+  UserProfile,
+  Event,
+  Activity,
+  Register,
+} from "./models.js";
 
 const ARGON2OPTS = {
   type: argon2.argon2id,
@@ -182,6 +188,127 @@ export class Repository {
     DELETE FROM register
     WHERE register_id = ${id}
     RETURNING *`;
+  }
+
+  // ----- Event -----
+
+  async createEvent(newEvent: Omit<Event, "event_id">) {
+    return await this.sql`
+      INSERT INTO event
+      (event_name, event_description, event_start, event_end, user_profile_id)
+      VALUES
+      (${newEvent.event_name},
+       ${newEvent.event_description},
+       ${newEvent.event_start},
+       ${newEvent.event_end},
+       ${newEvent.user_profile_id})
+      RETURNING *`;
+  }
+
+  async readAllEvents() {
+    return await this.sql`
+      SELECT *
+      FROM event`;
+  }
+
+  async readEventById(id: number) {
+    return await this.sql`
+      SELECT *
+      FROM event
+      WHERE event_id = ${id}`;
+  }
+
+  async updateEventById(
+    id: number,
+    partialEvent: Partial<Omit<Event, "event_id">>,
+  ) {
+    const name = partialEvent.event_name ?? null;
+    const description = partialEvent.event_description ?? null;
+    const start = partialEvent.event_start ?? null;
+    const end = partialEvent.event_end ?? null;
+    const ref = partialEvent.user_profile_id ?? null;
+    return await this.sql`
+      UPDATE event
+      SET
+      event_name = COALESCE(${name}, event_name),
+      event_description = COALESCE(${description}, event_description),
+      event_start = COALESCE(${start}, event_start),
+      event_end = COALESCE(${end}, event_end),
+      user_profile_id = COALESCE(${ref}, user_profile_id)
+      WHERE event_id = ${id}
+      RETURNING *`;
+  }
+
+  async deleteEventById(id: number) {
+    return await this.sql`
+      DELETE FROM event
+      WHERE event_id = ${id}
+      RETURNING *`;
+  }
+
+  // ----- Activity -----
+
+  async createActivity(newActivity: Omit<Activity, "activity_id">) {
+    return await this.sql`
+      INSERT INTO activity
+      (activity_name, activity_description, activity_start, activity_end, activity_real_start, activity_real_end, event_id, room_id)
+      VALUES
+      (${newActivity.activity_name},
+       ${newActivity.activity_description},
+       ${newActivity.activity_start},
+       ${newActivity.activity_end},
+       ${newActivity.activity_real_start},
+       ${newActivity.activity_real_end},
+       ${newActivity.event_id},
+       ${newActivity.room_id})
+      RETURNING *`;
+  }
+
+  async readAllActivities() {
+    return await this.sql`
+      SELECT *
+      FROM activity`;
+  }
+
+  async readActivityById(id: number) {
+    return await this.sql`
+      SELECT *
+      FROM activity
+      WHERE activity_id = ${id}`;
+  }
+
+  async updateActivityById(
+    id: number,
+    partialActivity: Partial<Omit<Activity, "activity_id">>,
+  ) {
+    const name = partialActivity.activity_name ?? null;
+    const description = partialActivity.activity_description ?? null;
+    const start = partialActivity.activity_start ?? null;
+    const end = partialActivity.activity_end ?? null;
+    const realStart = partialActivity.activity_real_start ?? null;
+    const realEnd = partialActivity.activity_real_end ?? null;
+    const refEvent = partialActivity.event_id ?? null;
+    const refRoom = partialActivity.room_id ?? null;
+    return await this.sql`
+      UPDATE activity
+      SET
+      activity_name = COALESCE(${name}, activity_name),
+      activity_description = COALESCE(${description}, activity_description),
+      activity_start = COALESCE(${start}, activity_start),
+      activity_end = COALESCE(${end}, activity_end),
+      activity_real_start = COALESCE(${realStart}, activity_real_start),
+      activity_real_end = COALESCE(${realEnd}, activity_real_end),
+      event_id = COALESCE(${refEvent}, event_id),
+      room_id = COALESCE(${refRoom}, room_id)
+      WHERE activity_id = ${id}
+      RETURNING *`;
+  }
+
+  async deleteActivityById(id: number) {
+    return await this.sql`
+      DELETE FROM activity
+      WHERE activity_id = ${id}
+      RETURNING *`;
   }
 
   async end() {
