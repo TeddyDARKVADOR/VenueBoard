@@ -1,8 +1,6 @@
 import argon2 from "argon2";
-import postgres, { PostgresError } from "postgres";
-import type { UserAuth } from "./models.js";
-import type { Room } from "./models.js";
-import { id } from "date-fns/locale";
+import postgres from "postgres";
+import type { Room, UserAuth } from "./models.js";
 
 export class Repository {
   sql: postgres.Sql;
@@ -36,32 +34,50 @@ export class Repository {
     return result;
   }
 
+  // ----- Room -----
+
   async createRoom(newRoom: Omit<Room, "room_id">) {
-    try {
-    const result = await this.sql`
+    return await this.sql`
     INSERT INTO room
     (room_name, room_location, room_capacity)
     VALUES
     (${newRoom.room_name}, ${newRoom.room_location}, ${newRoom.room_capacity})
-    RETURNING room_id, room_name, room_location, room_capacity`;
-    return result;
-    } catch (err) {
-    const error = err as PostgresError
-    throw error
-    }
+    RETURNING *`;
   }
 
-    async readRoom(readRoomById: number) {
-    try {
-    const result = await this.sql`
-    SELECT * FROM room 
-    WHERE id = ${readRoomById}`
-    return result;      
-    } catch (err){
-    const error = err as PostgresError
-    throw error
-    }
-    
+  async readRoom() {
+    return await this.sql`
+    SELECT * FROM room`;
+  }
+
+  async readRoomById(readRoomById: number) {
+    return await this.sql`
+    SELECT * FROM room
+    WHERE id = ${readRoomById}`;
+  }
+
+  async updateRoomById(
+    id: number,
+    partialRoom: Partial<Omit<Room, "room_id">>,
+  ) {
+    const name = partialRoom.room_name ?? null;
+    const location = partialRoom.room_location ?? null;
+    const capacity = partialRoom.room_capacity ?? null;
+    return await this.sql`
+    UPDATE room
+    SET
+    room_name = COALESCE(${name}, room_name),
+    room_location = COALESCE(${location}, room_location),
+    room_capacity = COALESCE(${capacity}, room_capacity)
+    WHERE room_id = ${id}
+    RETURNING *`;
+  }
+
+  async deleteRoomById(id: number) {
+    return await this.sql`
+    DELETE FROM room
+    WHERE room_id = ${id}
+    RETURNING *`;
   }
 
   async end() {
