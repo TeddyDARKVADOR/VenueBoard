@@ -2,17 +2,13 @@
   "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd",
   "type": "module",
   "dependencies": {
-    "argon2": "^0.44.0",
-    "date-fns": "^4.1.0",
-    "lolcatjs": "^2.4.3",
-    "postgres": "^3.4.7"
+    "fastify": "^5.6.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.6",
     "@tsconfig/node22": "^22.0.2",
     "@types/node": "^24.9.1",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "build": "tsc",
