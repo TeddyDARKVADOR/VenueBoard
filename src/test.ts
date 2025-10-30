@@ -4,14 +4,12 @@ import { Repository } from "./db.js";
 const repo = new Repository();
 
 try {
-  repo.sync();
-  console.log(
-    "createUserAuth: ",
-    await repo.createUserAuth({
-      user_auth_login: "abc",
-      user_auth_password: "def",
-    }),
-  );
+  const res = await repo.createUserAuth({
+    user_auth_login: "abc",
+    user_auth_password: "def",
+  });
+  console.log("createUserAuth: ", res);
+  const id = res[0].user_auth_id;
   console.log(
     "loginUserAuth: ",
     await repo.loginUserAuth({
@@ -20,7 +18,7 @@ try {
     }),
   );
   console.log("readAllUserAuth: ", await repo.readAllUserAuth());
-  console.log("readUserAuth: ", await repo.readUserAuthById(5));
+  console.log("readUserAuth: ", await repo.readUserAuthById(id));
   console.log(
     "updateUserAuth: ",
     await repo.updateUserAuthById(5, {
@@ -41,7 +39,7 @@ try {
     }),
   );
   console.log("readAllUserProfile: ", await repo.readAllUserProfile());
-  console.log("readUserProfile: ", await repo.readUserProfileById(5));
+  console.log("readUserProfile: ", await repo.readUserProfileById(id));
   console.log(
     "updateUserProfile: ",
     await repo.updateUserProfileById(5, {
@@ -49,8 +47,8 @@ try {
       user_profile_role: "admin",
     }),
   );
-  console.log("deleteUserProfile: ", await repo.deleteUserProfileById(5));
-  console.log("deleteUserAuth: ", await repo.deleteUserAuthById(5));
+  console.log("deleteUserProfile: ", await repo.deleteUserProfileById(id));
+  console.log("deleteUserAuth: ", await repo.deleteUserAuthById(id));
 } catch (err) {
   console.log(err);
 }

@@ -24,33 +24,6 @@ export class Repository {
     });
   }
 
-  async sync() {
-    try {
-      await this.sql`
-      DO $$
-      DECLARE r RECORD;
-      BEGIN
-        FOR r IN
-          SELECT table_schema, table_name, column_name
-          FROM information_schema.columns
-          WHERE column_default LIKE 'nextval(%'
-        LOOP
-          EXECUTE format(
-            'SELECT setval(pg_get_serial_sequence(%L, %L), (SELECT COALESCE(MAX(%I), 0) + 1 FROM %I.%I), false);',
-            r.table_schema || '.' || r.table_name,
-            r.column_name,
-            r.column_name,
-            r.table_schema,
-            r.table_name
-          );
-        END LOOP;
-      END$$;`;
-    } catch (err) {
-      const error = err as PostgresError;
-      throw error;
-    }
-  }
-
   // ----- UserAuth -----
 
   async createUserAuth(newUserAuth: Omit<UserAuth, "user_auth_id">) {
