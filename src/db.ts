@@ -3,6 +3,7 @@ import postgres from "postgres";
 import type {
   Activity,
   Event,
+  EventWithActivities,
   Register,
   Room,
   Run,
@@ -22,6 +23,7 @@ export class Repository {
   sql: postgres.Sql;
 
   constructor() {
+    process.loadEnvFile();
     this.sql = postgres({
       host: process.env.PGHOST,
       port: process.env.PGPORT ? Number(process.env.PGPORT) : undefined,
@@ -398,6 +400,43 @@ export class Repository {
     DELETE FROM run
     WHERE run_id = ${id}
     RETURNING *`;
+  }
+
+  // ----- Complex requests ------
+
+  async getEventAndActivitiesByEventId(id: number) {
+    const res = await this.readEventById(id);
+    const row = res[0];
+    const event: Event = {
+      event_id: Number(row.event_id),
+      event_name: String(row.event_name),
+      event_description: row.event_description,
+      event_start: new Date(row.event_start),
+      event_end: new Date(row.event_end),
+      user_profile_id: Number(row.user_profile_id),
+    };
+    const rows = await this.sql`
+    SELECT *
+    FROM activity
+    WHERE event_id = ${id}`;
+    const to_return: EventWithActivities = {
+      event,
+      activities: rows.map((row) => {
+        const activity: Activity = {
+          activity_id: Number(row.activity_id),
+          activity_name: String(row.activity_name),
+          activity_description: String(row.activity_description),
+          activity_start: new Date(row.activity_start),
+          activity_end: new Date(row.activity_end),
+          activity_real_start: new Date(row.activity_real_start),
+          activity_real_end: new Date(row.activity_real_end),
+          event_id: Number(row.event_id),
+          room_id: Number(row.room_id),
+        };
+        return activity;
+      }),
+    };
+    return to_return;
   }
 
   async end() {

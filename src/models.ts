@@ -50,3 +50,8 @@ export type Run = {
   ref_user_profile_id: number;
   ref_activity_id: number;
 };
+
+export type EventWithActivities = {
+  event: Event;
+  activities: Activity[];
+};
