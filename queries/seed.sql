@@ -27,12 +27,6 @@ INSERT INTO activity (activity_name, activity_description, activity_start, activ
   ('Author Signing', 'Book signing session with queue', '2026-05-15 14:00:00+02', '2026-05-15 15:30:00+02', NULL, NULL, 1, 3),
   ('Lab Guided Tour', 'Small group tours and demos', '2026-06-03 10:30:00+02', '2026-06-03 12:00:00+02', NULL, NULL, 2, 3);
 
-ALTER TABLE activity ADD COLUMN IF NOT EXISTS capacity INT;
-UPDATE activity SET capacity = 500 WHERE activity_id = 1;
-UPDATE activity SET capacity = 20 WHERE activity_id = 2;
-UPDATE activity SET capacity = 50 WHERE activity_id = 3;
-UPDATE activity SET capacity = 15 WHERE activity_id = 4;
-
 UPDATE activity SET activity_real_start = '2026-05-14 10:05:00+02', activity_real_end = '2026-05-14 11:02:00+02' WHERE activity_id = 1;
 UPDATE activity SET activity_real_start = '2026-05-14 11:35:00+02' WHERE activity_id = 2;
 
@@ -52,7 +46,7 @@ INSERT INTO event (event_id, event_name, event_description, event_start, event_e
 INSERT INTO room (room_id, room_name, room_location, room_capacity) VALUES
   (4, 'Games Zone', 'Building C - Basement', 300);
 
-INSERT INTO activity (activity_id, activity_name, activity_description, activity_start, activity_end, event_id, room_id, capacity) VALUES
-  (5, 'Retro Tournament', 'Elimination tournament of retro games', '2026-07-01 10:00:00+02', '2026-07-01 16:00:00+02', 3, 4, 64);
+INSERT INTO activity (activity_id, activity_name, activity_description, activity_start, activity_end, event_id, room_id) VALUES
+  (5, 'Retro Tournament', 'Elimination tournament of retro games', '2026-07-01 10:00:00+02', '2026-07-01 16:00:00+02', 3, 4);
 
 COMMIT;
