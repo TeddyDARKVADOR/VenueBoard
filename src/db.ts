@@ -98,7 +98,7 @@ export class Repository {
       (${newUserProfile.user_profile_name},
       ${newUserProfile.user_profile_role},
       ${newUserProfile.user_auth_id})
-      RETURNING user_profile_id, user_profile_name, user_profile_role, user_auth_id`;
+      RETURNING *`;
   }
 
   async readAllUserProfile() {
@@ -128,15 +128,14 @@ export class Repository {
       user_profile_role = COALESCE(${role}, user_profile_role),
       user_auth_id = COALESCE(${ref}, user_auth_id)
       WHERE user_profile_id = ${id}
-      RETURNING user_profile_id, user_profile_name, user_profile_role, user_auth_id
-      `;
+      RETURNING *`;
   }
 
   async deleteUserProfileById(id: number) {
     return await this.sql`
       DELETE FROM user_profile
       WHERE user_profile_id = ${id}
-      RETURNING user_profile_id, user_profile_name, user_profile_role, user_auth_id`;
+      RETURNING *`;
   }
 
   async end() {
