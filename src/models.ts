@@ -50,20 +50,26 @@ export const ZActivity = z.object({
 
 export type Activity = z.infer<typeof ZActivity>;
 
-export type Room = {
-  room_id: number;
-  room_name: string;
-  room_location: string;
-  room_capacity: number;
-};
+export const ZRoom = z.object({
+  room_id: z.coerce.number().positive().int(),
+  room_name: z.string(),
+  room_location: z.string(),
+  room_capacity: z.coerce.number().positive().int(),
+});
 
-export type Run = {
-  run_id: number;
-  ref_user_profile_id: number;
-  ref_activity_id: number;
-};
+export type Room = z.infer<typeof ZRoom>;
 
-export type EventWithActivities = {
-  event: Event;
-  activities: Activity[];
-};
+export const ZRun = z.object({
+  run_id: z.coerce.number().positive().int(),
+  ref_user_profile_id: z.coerce.number().positive().int(),
+  ref_activity_id: z.coerce.number().positive().int(),
+});
+
+export type Run = z.infer<typeof ZRun>;
+
+export const ZEventWithActivities = z.object({
+  event: z.object(ZEvent),
+  activities: z.object(ZActivity[]),
+});
+
+export type EventWithActivities = z.infer<typeof ZEventWithActivities>;
