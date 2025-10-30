@@ -1,5 +1,11 @@
 import z from "zod";
 
+export const ZId = z.object({
+  id: z.coerce.number().positive().int(),
+});
+
+export type Id = z.infer<typeof ZId>;
+
 export const ZUserAuth = z.object({
   user_auth_id: z.coerce.number().positive().int(),
   user_auth_login: z.string(),
@@ -33,8 +39,12 @@ export const ZEvent = z.object({
   event_end: z.coerce.date(),
   user_profile_id: z.coerce.number().positive().int(),
 });
+export const ZEventWithoutId = ZEvent.omit({ event_id: true });
+export const ZPartialEventWithoutId = ZEventWithoutId.partial();
 
 export type Event = z.infer<typeof ZEvent>;
+export type EventWithoutId = z.infer<typeof ZEventWithoutId>;
+export type PartialEventWithoutId = z.infer<typeof ZPartialEventWithoutId>;
 
 export const ZActivity = z.object({
   activity_id: z.coerce.number().positive().int(),

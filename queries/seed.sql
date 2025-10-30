@@ -41,12 +41,12 @@ INSERT INTO register (user_profile_id, activity_id) VALUES
   (1, 4);
 
 INSERT INTO event (event_id, event_name, event_description, event_start, event_end, user_profile_id) VALUES
-  (3, 'Mini Games Fair', 'Games area with demos and tournaments', '2026-07-01 09:00:00+02', '2026-07-01 18:00:00+02', 1);
+  ('Mini Games Fair', 'Games area with demos and tournaments', '2026-07-01 09:00:00+02', '2026-07-01 18:00:00+02', 1);
 
 INSERT INTO room (room_id, room_name, room_location, room_capacity) VALUES
-  (4, 'Games Zone', 'Building C - Basement', 300);
+  ('Games Zone', 'Building C - Basement', 300);
 
 INSERT INTO activity (activity_id, activity_name, activity_description, activity_start, activity_end, event_id, room_id) VALUES
-  (5, 'Retro Tournament', 'Elimination tournament of retro games', '2026-07-01 10:00:00+02', '2026-07-01 16:00:00+02', 3, 4);
+  ('Retro Tournament', 'Elimination tournament of retro games', '2026-07-01 10:00:00+02', '2026-07-01 16:00:00+02', 3, 4);
 
 COMMIT;

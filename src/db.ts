@@ -4,6 +4,9 @@ import type {
   Activity,
   Event,
   EventWithActivities,
+  EventWithoutId,
+  Id,
+  PartialEventWithoutId,
   Register,
   Room,
   Run,
@@ -23,7 +26,7 @@ export class Repository {
   sql: postgres.Sql;
 
   constructor() {
-    process.loadEnvFile();
+    console.log("\n", process.env.PGHOST, "\n");
     this.sql = postgres({
       host: process.env.PGHOST,
       port: process.env.PGPORT ? Number(process.env.PGPORT) : undefined,
@@ -196,7 +199,7 @@ export class Repository {
 
   // ----- Event -----
 
-  async createEvent(newEvent: Omit<Event, "event_id">) {
+  async createEvent(newEvent: EventWithoutId) {
     return await this.sql`
       INSERT INTO event
       (event_name, event_description, event_start, event_end, user_profile_id)
@@ -215,17 +218,14 @@ export class Repository {
       FROM event`;
   }
 
-  async readEventById(id: number) {
+  async readEventById({ id }: Id) {
     return await this.sql`
       SELECT *
       FROM event
       WHERE event_id = ${id}`;
   }
 
-  async updateEventById(
-    id: number,
-    partialEvent: Partial<Omit<Event, "event_id">>,
-  ) {
+  async updateEventById({ id }: Id, partialEvent: PartialEventWithoutId) {
     const name = partialEvent.event_name ?? null;
     const description = partialEvent.event_description ?? null;
     const start = partialEvent.event_start ?? null;
@@ -243,7 +243,7 @@ export class Repository {
       RETURNING *`;
   }
 
-  async deleteEventById(id: number) {
+  async deleteEventById({ id }: Id) {
     return await this.sql`
       DELETE FROM event
       WHERE event_id = ${id}
@@ -404,8 +404,8 @@ export class Repository {
 
   // ----- Complex requests ------
 
-  async getEventAndActivitiesByEventId(id: number) {
-    const res = await this.readEventById(id);
+  async getEventAndActivitiesByEventId({ id }: Id) {
+    const res = await this.readEventById({ id });
     const row = res[0];
     const event: Event = {
       event_id: Number(row.event_id),
