@@ -19,26 +19,30 @@ export type Register = {
   activity_id: number;
 };
 
-export type Event = {
-  event_id: number;
-  event_name: string;
-  event_description: string;
-  event_start: Date;
-  event_end: Date;
-  user_profile_id: number;
-};
+export const ZEvent = z.object({
+  event_id: z.coerce.number().positive().int(),
+  event_name: z.string(),
+  event_description: z.string(),
+  event_start: z.coerce.date(),
+  event_end: z.coerce.date(),
+  user_profile_id: z.coerce.number().positive().int(),
+});
 
-export type Activity = {
-  activity_id: number;
-  activity_name: string;
-  activity_description: string;
-  activity_start: Date;
-  activity_end: Date;
-  activity_real_start: Date | null;
-  activity_real_end: Date | null;
-  event_id: number;
-  room_id: number;
-};
+export type Event = z.infer<typeof ZEvent>;
+
+export const ZActivity = z.object({
+  activity_id: z.coerce.number().positive().int(),
+  activity_name: z.string(),
+  activity_description: z.string(),
+  activity_start: z.coerce.date(),
+  activity_end: z.coerce.date(),
+  activity_real_start: z.coerce.date().nullable(),
+  activity_real_end: z.coerce.date().nullable(),
+  event_id: z.coerce.number().positive().int(),
+  room_id: z.coerce.number().positive().int(),
+});
+
+export type Activity = z.infer<typeof ZActivity>;
 
 export type Room = {
   room_id: number;
