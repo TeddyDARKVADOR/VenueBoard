@@ -1,11 +1,13 @@
 import argon2 from "argon2";
 import postgres from "postgres";
 import type {
+  Activity,
+  Event,
+  Register,
+  Room,
+  Run,
   UserAuth,
   UserProfile,
-  Event,
-  Activity,
-  Register,
 } from "./models.js";
 
 const ARGON2OPTS = {
@@ -309,6 +311,93 @@ export class Repository {
       DELETE FROM activity
       WHERE activity_id = ${id}
       RETURNING *`;
+  }
+
+  // ----- Room -----
+
+  async createRoom(newRoom: Omit<Room, "room_id">) {
+    return await this.sql`
+    INSERT INTO room
+    (room_name, room_location, room_capacity)
+    VALUES
+    (${newRoom.room_name}, ${newRoom.room_location}, ${newRoom.room_capacity})
+    RETURNING *`;
+  }
+
+  async readRoom() {
+    return await this.sql`
+    SELECT * FROM room`;
+  }
+
+  async readRoomById(id: number) {
+    return await this.sql`
+    SELECT * FROM room
+    WHERE room_id = ${id}`;
+  }
+
+  async updateRoomById(
+    id: number,
+    partialRoom: Partial<Omit<Room, "room_id">>,
+  ) {
+    const name = partialRoom.room_name ?? null;
+    const location = partialRoom.room_location ?? null;
+    const capacity = partialRoom.room_capacity ?? null;
+    return await this.sql`
+    UPDATE room
+    SET
+    room_name = COALESCE(${name}, room_name),
+    room_location = COALESCE(${location}, room_location),
+    room_capacity = COALESCE(${capacity}, room_capacity)
+    WHERE room_id = ${id}
+    RETURNING *`;
+  }
+
+  async deleteRoomById(id: number) {
+    return await this.sql`
+    DELETE FROM room
+    WHERE room_id = ${id}
+    RETURNING *`;
+  }
+
+  // ----- Run -----
+
+  async createRun(newRun: Omit<Run, "run_id">) {
+    return await this.sql`
+    INSERT INTO Run
+    (ref_user_profile_id, ref_activity_id)
+    VALUES
+    (${newRun.ref_user_profile_id}, ${newRun.ref_activity_id})
+    RETURNING *`;
+  }
+
+  async readRun() {
+    return this.sql`
+    SELECT * FROM run`;
+  }
+
+  async readRunById(id: number) {
+    return this.sql`
+    SELECT * FROM run
+    WHERE run_id = ${id}`;
+  }
+
+  async updateRunById(id: number, partialRun: Partial<Omit<Run, "run_id">>) {
+    const ref_user_profile_id = partialRun.ref_user_profile_id ?? null;
+    const ref_activity_id = partialRun.ref_activity_id ?? null;
+    return await this.sql`
+    UPDATE run
+    SET
+    ref_user_profile_id = COALESCE(${ref_user_profile_id}, ref_user_profile_id)
+    ref_activity_id = COALESCE(${ref_activity_id}, ref_activity_id)
+    WHERE run_id = ${id}
+    RETURNING *`;
+  }
+
+  async deleteRunById(id: number) {
+    return await this.sql`
+    DELETE FROM run
+    WHERE run_id = ${id}
+    RETURNING *`;
   }
 
   async end() {

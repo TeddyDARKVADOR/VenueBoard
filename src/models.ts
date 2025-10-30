@@ -37,3 +37,16 @@ export type Activity = {
   event_id: number;
   room_id: number;
 };
+
+export type Room = {
+  room_id: number;
+  room_name: string;
+  room_location: string;
+  room_capacity: number;
+};
+
+export type Run = {
+  run_id: number;
+  ref_user_profile_id: number;
+  ref_activity_id: number;
+};
