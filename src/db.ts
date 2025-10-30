@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import postgres from "postgres";
-import type { Room, UserAuth } from "./models.js";
+import type { Room, Run, UserAuth } from "./models.js";
 
 export class Repository {
   sql: postgres.Sql;
@@ -50,10 +50,10 @@ export class Repository {
     SELECT * FROM room`;
   }
 
-  async readRoomById(readRoomById: number) {
+  async readRoomById(id: number) {
     return await this.sql`
     SELECT * FROM room
-    WHERE id = ${readRoomById}`;
+    WHERE room_id = ${id}`;
   }
 
   async updateRoomById(
@@ -77,6 +77,47 @@ export class Repository {
     return await this.sql`
     DELETE FROM room
     WHERE room_id = ${id}
+    RETURNING *`;
+  }
+
+  // ----- Run -----
+
+  async createRun(newRun: Omit<Run, "run_id">) {
+    return await this.sql`
+    INSERT INTO Run
+    (ref_user_profile_id, ref_activity_id)
+    VALUES
+    (${newRun.ref_user_profile_id}, ${newRun.ref_activity_id})
+    RETURNING *`;
+  }
+
+  async readRun() {
+    return this.sql`
+    SELECT * FROM run`;
+  }
+
+  async readRunById(id: number) {
+    return this.sql`
+    SELECT * FROM run
+    WHERE run_id = ${id}`;
+  }
+
+  async updateRunById(id: number, partialRun: Partial<Omit<Run, "run_id">>) {
+    const ref_user_profile_id = partialRun.ref_user_profile_id ?? null;
+    const ref_activity_id = partialRun.ref_activity_id ?? null;
+    return await this.sql`
+    UPDATE run
+    SET
+    ref_user_profile_id = COALESCE(${ref_user_profile_id}, ref_user_profile_id)
+    ref_activity_id = COALESCE(${ref_activity_id}, ref_activity_id)
+    WHERE run_id = ${id}
+    RETURNING *`;
+  }
+
+  async deleteRunById(id: number) {
+    return await this.sql`
+    DELETE FROM run
+    WHERE run_id = ${id}
     RETURNING *`;
   }
 

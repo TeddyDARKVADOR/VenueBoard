@@ -17,3 +17,9 @@ export type Room = {
   room_location: string;
   room_capacity: number;
 };
+
+export type Run = {
+  run_id: number;
+  ref_user_profile_id: number;
+  ref_activity_id: number;
+};
