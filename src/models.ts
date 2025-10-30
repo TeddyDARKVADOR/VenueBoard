@@ -1,23 +1,29 @@
 import z from "zod";
 
-export type UserAuth = {
-  user_auth_id: number;
-  user_auth_login: string;
-  user_auth_password: string;
-};
+export const ZUserAuth = z.object({
+  user_auth_id: z.coerce.number().positive().int(),
+  user_auth_login: z.string(),
+  user_auth_password: z.string(),
+});
 
-export type UserProfile = {
-  user_profile_id: number;
-  user_profile_name: string;
-  user_profile_role: string;
-  user_auth_id: number;
-};
+export type UserAuth = z.infer<typeof ZUserAuth>;
 
-export type Register = {
-  register_id: number;
-  user_profile_id: number;
-  activity_id: number;
-};
+export const ZUserProfile = z.object({
+  user_profile_id: z.coerce.number().positive().int(),
+  user_profile_name: z.string(),
+  user_profile_role: z.enum(["admin", "staff", "speaker", "guest"]),
+  user_auth_id: z.coerce.number().positive().int(),
+});
+
+export type UserProfile = z.infer<typeof ZUserProfile>;
+
+export const ZRegister = z.object({
+  register_id: z.coerce.number().positive().int(),
+  user_profile_id: z.coerce.number().positive().int(),
+  activity_id: z.coerce.number().positive().int(),
+});
+
+export type Register = z.infer<typeof ZRegister>;
 
 export type Event = {
   event_id: number;
