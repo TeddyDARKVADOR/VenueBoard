@@ -10,6 +10,7 @@ export const ZUserAuth = z.object({
   user_auth_id: z.coerce.number().positive().int(),
   user_auth_login: z.string(),
   user_auth_password: z.string(),
+  user_profile_id: z.coerce.number().positive().int(),
 });
 export const ZUserAuthWithoutId = ZUserAuth.omit({ user_auth_id: true });
 export const ZUserAuthWithoutPassword = ZUserAuth.omit({
@@ -28,7 +29,6 @@ export const ZUserProfile = z.object({
   user_profile_id: z.coerce.number().positive().int(),
   user_profile_name: z.string(),
   user_profile_role: z.enum(["admin", "staff", "speaker", "guest"]),
-  user_auth_id: z.coerce.number().positive().int(),
 });
 export const ZUserProfileWithoutId = ZUserProfile.omit({
   user_profile_id: true,

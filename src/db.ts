@@ -55,9 +55,9 @@ export class Repository {
     const hash = await argon2.hash(newUserAuth.user_auth_password, ARGON2OPTS);
     const rows = (await this.sql`
     INSERT INTO user_auth
-    (user_auth_login, user_auth_password)
+    (user_auth_login, user_auth_password, user_profile_id)
     VALUES
-    (${newUserAuth.user_auth_login}, ${hash})
+    (${newUserAuth.user_auth_login}, ${hash}, ${newUserAuth.user_profile_id})
     RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
     return rows[0];
   }
@@ -85,6 +85,7 @@ export class Repository {
     partialUserAuth: PartialUserAuthWithoutId,
   ) {
     const login = partialUserAuth.user_auth_login ?? null;
+    const ref = partialUserAuth.user_profile_id ?? null;
     let hash = null;
     if (partialUserAuth.user_auth_password) {
       hash = await argon2.hash(partialUserAuth.user_auth_password, ARGON2OPTS);
@@ -93,7 +94,8 @@ export class Repository {
       UPDATE user_auth
       SET
       user_auth_login = COALESCE(${login}, user_auth_login),
-      user_auth_password = COALESCE(${hash}, user_auth_password)
+      user_auth_password = COALESCE(${hash}, user_auth_password),
+      user_profil_id = COALESCE(${ref}, user_profile_id)
       WHERE user_auth_id = ${id}
       RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
     if (rows.length === 0) {
@@ -131,11 +133,10 @@ export class Repository {
   async createUserProfile(newUserProfile: UserProfileWithoutId) {
     const rows = (await this.sql`
       INSERT INTO user_profile
-      (user_profile_name, user_profile_role, user_auth_id)
+      (user_profile_name, user_profile_role)
       VALUES
       (${newUserProfile.user_profile_name},
       ${newUserProfile.user_profile_role},
-      ${newUserProfile.user_auth_id})
       RETURNING *`) as UserProfile[];
     return rows[0];
   }
@@ -164,13 +165,11 @@ export class Repository {
   ) {
     const name = partialUserProfile.user_profile_name ?? null;
     const role = partialUserProfile.user_profile_role ?? null;
-    const ref = partialUserProfile.user_auth_id ?? null;
     const rows = (await this.sql`
       UPDATE user_profile
       SET
       user_profile_name = COALESCE(${name}, user_profile_name),
-      user_profile_role = COALESCE(${role}, user_profile_role),
-      user_auth_id = COALESCE(${ref}, user_auth_id)
+      user_profile_role = COALESCE(${role}, user_profile_role)
       WHERE user_profile_id = ${id}
       RETURNING *`) as UserProfile[];
     if (rows.length === 0) {

@@ -1,14 +1,14 @@
-CREATE TABLE IF NOT EXISTS user_auth (
-  user_auth_id SERIAL PRIMARY KEY,
-  user_auth_login TEXT NOT NULL UNIQUE,
-  user_auth_password TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS user_profile (
   user_profile_id SERIAL PRIMARY KEY,
   user_profile_name TEXT NOT NULL,
-  user_profile_role TEXT NOT NULL,
-  user_auth_id INT NOT NULL REFERENCES user_auth(user_auth_id)
+  user_profile_role TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_auth (
+  user_auth_id SERIAL PRIMARY KEY,
+  user_auth_login TEXT NOT NULL UNIQUE,
+  user_auth_password TEXT NOT NULL,
+  user_profile_id INT NOT NULL REFERENCES user_profile(user_profile_id)
 );
 
 CREATE TABLE IF NOT EXISTS event (

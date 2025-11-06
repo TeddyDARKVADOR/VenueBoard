@@ -1,16 +1,16 @@
 BEGIN;
 
-INSERT INTO user_auth (user_auth_login, user_auth_password) VALUES
-  ('alice.manager', 'password_alice_hash'),
-  ('bob.speaker', 'password_bob_hash'),
-  ('carol.display', 'password_carol_hash'),
-  ('dave.speaker', 'password_dave_hash');
+INSERT INTO user_profile (user_profile_name, user_profile_role) VALUES
+  ('Alice Martin', 'manager'),
+  ('Bob Finch', 'speaker'),
+  ('Carol Dupont', 'display_operator'),
+  ('Dave Leroy', 'speaker');
 
-INSERT INTO user_profile (user_profile_name, user_profile_role, user_auth_id) VALUES
-  ('Alice Martin', 'manager', 1),
-  ('Bob Finch', 'speaker', 2),
-  ('Carol Dupont', 'display_operator', 3),
-  ('Dave Leroy', 'speaker', 4);
+INSERT INTO user_auth (user_auth_login, user_auth_password, user_profile_id) VALUES
+  ('alice.manager', 'password_alice_hash', 1),
+  ('bob.speaker', 'password_bob_hash', 2),
+  ('carol.display', 'password_carol_hash', 3),
+  ('dave.speaker', 'password_dave_hash', 4);
 
 INSERT INTO event (event_name, event_description, event_start, event_end, user_profile_id) VALUES
   ('Paris Tech Con 2026', 'Technology fair with public talks and workshops', '2026-05-14 09:00:00+02', '2026-05-16 18:00:00+02', 1),
