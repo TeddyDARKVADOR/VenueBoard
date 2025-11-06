@@ -249,6 +249,13 @@ export class Repository {
   // ----- Event -----
 
   async createEvent(newEvent: EventWithoutId) {
+    if (newEvent.event_start >= newEvent.event_end) {
+      throw new CustomError(
+        "LOGIC",
+        409,
+        "Event end needs to be older than its start",
+      );
+    }
     const rows = (await this.sql`
       INSERT INTO event
       (event_name, event_description, event_start, event_end, user_profile_id)
@@ -286,6 +293,28 @@ export class Repository {
     const start = partialEvent.event_start ?? null;
     const end = partialEvent.event_end ?? null;
     const ref = partialEvent.user_profile_id ?? null;
+
+    const error = new CustomError(
+      "LOGIC",
+      409,
+      "Event end needs to be older than its start",
+    );
+    if (!start || !end) {
+      if (start || end) {
+        const event = await this.readEventById({ id });
+        if (
+          (start && start >= event.event_end) ||
+          (end && event.event_start >= end)
+        ) {
+          throw error;
+        }
+      }
+    } else {
+      if (start >= end) {
+        throw error;
+      }
+    }
+
     const rows = (await this.sql`
       UPDATE event
       SET
@@ -316,6 +345,38 @@ export class Repository {
   // ----- Activity -----
 
   async createActivity(newActivity: ActivityWithoutId) {
+    if (newActivity.activity_start >= newActivity.activity_end) {
+      throw new CustomError(
+        "LOGIC",
+        409,
+        "Activity end needs to be older than its start",
+      );
+    }
+    if (
+      newActivity.activity_real_start &&
+      newActivity.activity_real_end &&
+      newActivity.activity_real_start >= newActivity.activity_real_end
+    ) {
+      throw new CustomError(
+        "LOGIC",
+        409,
+        "Activity real end needs to be older than its real start",
+      );
+    }
+    const event = await this.readEventById({ id: newActivity.event_id });
+    if (
+      newActivity.activity_start < event.event_start ||
+      newActivity.activity_start > event.event_end ||
+      newActivity.activity_end < event.event_start ||
+      newActivity.activity_end > event.event_end
+    ) {
+      throw new CustomError(
+        "LOGIC",
+        409,
+        "Activity's end and start needs to be between his event's dates",
+      );
+    }
+
     const rows = (await this.sql`
       INSERT INTO activity
       (activity_name, activity_description, activity_start, activity_end, activity_real_start, activity_real_end, event_id, room_id)
