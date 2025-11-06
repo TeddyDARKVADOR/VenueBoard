@@ -9,9 +9,12 @@ import z from "zod";
 import { CustomError } from "./CustomError.js";
 import { Repository } from "./db.js";
 import {
+  type ActivityWithoutId,
   type EventWithoutId,
   type Id,
+  type PartialActivityWithoutId,
   type PartialEventWithoutId,
+  ZActivityWithoutId,
   ZEventWithoutId,
   ZId,
   ZPartialEventWithoutId,
@@ -98,7 +101,7 @@ function start_web_server() {
     "/event_with_activities/:id",
     { schema: { params: ZId } },
     async (req) => {
-      return await repo.getEventWithActivitiesByEventId(req.params);
+      return await repo.readEventWithActivitiesByEventId(req.params);
     },
   );
 
@@ -106,8 +109,11 @@ function start_web_server() {
     "/events/:id",
     { schema: { params: ZId, body: ZPartialEventWithoutId } },
     async (req) => {
+      if (!req.body) {
+        throw new CustomError("REQUEST", 400, "Missing body");
+      }
       const event = await repo.updateEventById(req.params, req.body);
-      return { event_id: event.event_id, message: "edited" };
+      return { event_id: event.event_id, message: "updated" };
     },
   );
 
@@ -119,6 +125,45 @@ function start_web_server() {
       return { message: "deleted" };
     },
   );
+
+  // ----- Activity Routes -----
+
+  web_server.post<{ Body: ActivityWithoutId }>(
+    "/activities",
+    { schema: { body: ZActivityWithoutId } },
+    async (req) => {
+      const activity = await repo.createActivity(req.body);
+      return { activity_id: activity.activity_id, message: "created" };
+    },
+  );
+
+  web_server.get("/activities", async () => {
+    return await repo.readAllActivities();
+  });
+
+  web_server.get<{ Params: Id }>(
+    "/activities/:id",
+    { schema: { params: ZId } },
+    async (req) => {
+      return await repo.readActivityById(req.params);
+    },
+  );
+
+  web_server.put<{ Params: Id; Body: PartialActivityWithoutId }>(
+    "/activities/:id",
+    async (req) => {
+      if (!req.body) {
+        throw new CustomError("REQUEST", 400, "Missing body");
+      }
+      const activity = await repo.updateActivityById(req.params, req.body);
+      return { activity_id: activity.activity_id, message: "updated" };
+    },
+  );
+
+  web_server.delete<{ Params: Id }>("/activities/:id", async (req) => {
+    await repo.deleteActivityById(req.params);
+    return { message: "deleted" };
+  });
 
   // ----- Listen -----
 

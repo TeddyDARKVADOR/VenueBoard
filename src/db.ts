@@ -507,7 +507,7 @@ export class Repository {
 
   // ----- Complex requests ------
 
-  async getEventWithActivitiesByEventId({ id }: Id) {
+  async readEventWithActivitiesByEventId({ id }: Id) {
     const rows = (await this.sql`
     SELECT
       event.*,
