@@ -1,20 +1,21 @@
-import Fastify from "fastify";
 import dotenv from "dotenv";
+import Fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
   serializerCompiler,
   validatorCompiler,
 } from "fastify-type-provider-zod";
+import z from "zod";
+import { CustomError } from "./CustomError.js";
+import { Repository } from "./db.js";
 import {
+  type EventWithoutId,
   type Id,
+  type PartialEventWithoutId,
   ZEventWithoutId,
   ZId,
-  type EventWithoutId,
-  type PartialEventWithoutId,
   ZPartialEventWithoutId,
 } from "./models.js";
-import { Repository } from "./db.js";
-import z from "zod";
 
 dotenv.config();
 
@@ -28,8 +29,38 @@ function start_web_server() {
   // ----- Error Handler -----
 
   web_server.setErrorHandler(async (error, _, reply) => {
+    // to catch zod validation errors if fastify format them
+    if (error.code === "FST_ERR_VALIDATION") {
+      return error;
+    }
     if (error instanceof z.ZodError) {
       return error;
+    }
+    // to catch Postgres errors
+    if (
+      error.code &&
+      typeof error.code === "string" &&
+      /^\d{5}$/.test(error.code)
+    ) {
+      switch (error.code) {
+        case "23503":
+          reply.code(404);
+          break;
+        case "23505	":
+          reply.code(409);
+          break;
+        default:
+          reply.code(500);
+      }
+      return error;
+    }
+    if (error instanceof CustomError) {
+      reply.code(error.code);
+      return {
+        subject: error.subject,
+        message: error.message,
+        statusCode: error.code,
+      };
     }
     console.error("Unexpected error: ", error);
     reply.code(500);
@@ -46,8 +77,8 @@ function start_web_server() {
     "/events",
     { schema: { body: ZEventWithoutId } },
     async (req) => {
-      const res = await repo.createEvent(req.body);
-      return { event_id: res[0].id, message: "created" };
+      const event = await repo.createEvent(req.body);
+      return { event_id: event.event_id, message: "created" };
     },
   );
 
@@ -55,22 +86,28 @@ function start_web_server() {
     "/events/:id",
     { schema: { params: ZId } },
     async (req) => {
-      const res = await repo.readEventById(req.params);
-      return res[0];
+      return await repo.readEventById(req.params);
     },
   );
 
   web_server.get("/events", async () => {
-    const res = await repo.readAllEvents();
-    return res;
+    return await repo.readAllEvents();
   });
+
+  web_server.get<{ Params: Id }>(
+    "/event_with_activities/:id",
+    { schema: { params: ZId } },
+    async (req) => {
+      return await repo.getEventWithActivitiesByEventId(req.params);
+    },
+  );
 
   web_server.put<{ Params: Id; Body: PartialEventWithoutId }>(
     "/events/:id",
     { schema: { params: ZId, body: ZPartialEventWithoutId } },
     async (req) => {
-      const res = await repo.updateEventById(req.params, req.body);
-      return { event_id: res[0].id, message: "edited" };
+      const event = await repo.updateEventById(req.params, req.body);
+      return { event_id: event.event_id, message: "edited" };
     },
   );
 

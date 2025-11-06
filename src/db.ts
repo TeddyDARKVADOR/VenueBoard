@@ -1,17 +1,30 @@
 import argon2 from "argon2";
 import postgres from "postgres";
+import { CustomError } from "./CustomError.js";
 import type {
   Activity,
+  ActivityWithoutId,
   Event,
   EventWithActivities,
   EventWithoutId,
   Id,
+  PartialActivityWithoutId,
   PartialEventWithoutId,
+  PartialRegisterWithoutId,
+  PartialRoomWithoutId,
+  PartialRunWithoutId,
+  PartialUserAuthWithoutId,
+  PartialUserProfileWithoutId,
   Register,
+  RegisterWithoutId,
   Room,
+  RoomWithoutId,
   Run,
-  UserAuth,
+  RunWithoutId,
+  UserAuthWithoutId,
+  UserAuthWithoutPassword,
   UserProfile,
+  UserProfileWithoutId,
 } from "./models.js";
 
 const ARGON2OPTS = {
@@ -38,169 +51,206 @@ export class Repository {
 
   // ----- UserAuth -----
 
-  async createUserAuth(newUserAuth: Omit<UserAuth, "user_auth_id">) {
+  async createUserAuth(newUserAuth: UserAuthWithoutId) {
     const hash = await argon2.hash(newUserAuth.user_auth_password, ARGON2OPTS);
-    return await this.sql`
+    const rows = (await this.sql`
     INSERT INTO user_auth
     (user_auth_login, user_auth_password)
     VALUES
     (${newUserAuth.user_auth_login}, ${hash})
-    RETURNING user_auth_id, user_auth_login`;
+    RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
+    return rows[0];
   }
 
   async readAllUserAuth() {
-    return await this.sql`
+    const rows = (await this.sql`
       SELECT user_auth_id, user_auth_login
-      FROM user_auth`;
+      FROM user_auth`) as UserAuthWithoutPassword[];
+    return rows;
   }
 
-  async readUserAuthById(id: number) {
-    return await this.sql`
+  async readUserAuthById({ id }: Id) {
+    const rows = (await this.sql`
       SELECT user_auth_id, user_auth_login
       FROM user_auth
-      WHERE user_auth_id = ${id}`;
+      WHERE user_auth_id = ${id}`) as UserAuthWithoutPassword[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   async updateUserAuthById(
-    id: number,
-    partialUserAuth: Partial<Omit<UserAuth, "user_auth_id">>,
+    { id }: Id,
+    partialUserAuth: PartialUserAuthWithoutId,
   ) {
     const login = partialUserAuth.user_auth_login ?? null;
     let hash = null;
     if (partialUserAuth.user_auth_password) {
       hash = await argon2.hash(partialUserAuth.user_auth_password, ARGON2OPTS);
     }
-    return await this.sql`
+    const rows = (await this.sql`
       UPDATE user_auth
       SET
       user_auth_login = COALESCE(${login}, user_auth_login),
       user_auth_password = COALESCE(${hash}, user_auth_password)
       WHERE user_auth_id = ${id}
-      RETURNING user_auth_id, user_auth_login`;
+      RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async deleteUserAuthById(id: number) {
-    return await this.sql`
+  async deleteUserAuthById({ id }: Id) {
+    const rows = (await this.sql`
       DELETE FROM user_auth
       WHERE user_auth_id = ${id}
-      RETURNING user_auth_id, user_auth_login`;
+      RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async loginUserAuth(user: Omit<UserAuth, "user_auth_id">) {
-    const rows = await this.sql`
+  async loginUserAuth(user: UserAuthWithoutId) {
+    const rows = (await this.sql`
       SELECT user_auth_password
       FROM user_auth
       WHERE user_auth_login = ${user.user_auth_login}
-    `;
-    if (!rows || rows.length === 0) {
-      return false;
+    `) as { user_auth_password: string }[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
     }
-    const storedHash = rows[0].user_auth_password as string;
+    const storedHash = rows[0].user_auth_password;
     return await argon2.verify(storedHash, user.user_auth_password);
   }
 
   // ----- UserProfile -----
 
-  async createUserProfile(
-    newUserProfile: Omit<UserProfile, "user_profile_id">,
-  ) {
-    return await this.sql`
+  async createUserProfile(newUserProfile: UserProfileWithoutId) {
+    const rows = (await this.sql`
       INSERT INTO user_profile
       (user_profile_name, user_profile_role, user_auth_id)
       VALUES
       (${newUserProfile.user_profile_name},
       ${newUserProfile.user_profile_role},
       ${newUserProfile.user_auth_id})
-      RETURNING *`;
+      RETURNING *`) as UserProfile[];
+    return rows[0];
   }
 
   async readAllUserProfile() {
-    return await this.sql`
+    const rows = (await this.sql`
       SELECT *
-      FROM user_profile`;
+      FROM user_profile`) as UserProfile[];
+    return rows;
   }
 
-  async readUserProfileById(id: number) {
-    return await this.sql`
+  async readUserProfileById({ id }: Id) {
+    const rows = (await this.sql`
       SELECT *
       FROM user_profile
-      WHERE user_profile_id = ${id}`;
+      WHERE user_profile_id = ${id}`) as UserProfile[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   async updateUserProfileById(
-    id: number,
-    partialUserProfile: Partial<Omit<UserProfile, "user_profile_id">>,
+    { id }: Id,
+    partialUserProfile: PartialUserProfileWithoutId,
   ) {
     const name = partialUserProfile.user_profile_name ?? null;
     const role = partialUserProfile.user_profile_role ?? null;
     const ref = partialUserProfile.user_auth_id ?? null;
-    return await this.sql`
+    const rows = (await this.sql`
       UPDATE user_profile
       SET
       user_profile_name = COALESCE(${name}, user_profile_name),
       user_profile_role = COALESCE(${role}, user_profile_role),
       user_auth_id = COALESCE(${ref}, user_auth_id)
       WHERE user_profile_id = ${id}
-      RETURNING *`;
+      RETURNING *`) as UserProfile[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async deleteUserProfileById(id: number) {
-    return await this.sql`
+  async deleteUserProfileById({ id }: Id) {
+    const rows = await this.sql`
       DELETE FROM user_profile
       WHERE user_profile_id = ${id}
       RETURNING *`;
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   //----- Register -----
 
-  async createRegister(register: Omit<Register, "register_id">) {
-    return await this.sql`
+  async createRegister(register: RegisterWithoutId) {
+    const rows = (await this.sql`
     INSERT INTO register
     (user_profile_id, activity_id)
     VALUES
     (${register.user_profile_id} , ${register.activity_id})
-    RETURNING *`;
+    RETURNING *`) as Register[];
+    return rows[0];
   }
 
   async readAllRegister() {
-    return await this.sql`
+    const rows = (await this.sql`
     SELECT *
-    FROM register`;
+    FROM register`) as Register[];
+    return rows;
   }
 
-  async readRegisterById(id: number) {
-    return await this.sql`
+  async readRegisterById({ id }: Id) {
+    const rows = (await this.sql`
     SELECT *
     FROM register
-    WHERE register_id = ${id}`;
+    WHERE register_id = ${id}`) as Register[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async updateRegisterById(
-    id: number,
-    update: Partial<Omit<Register, "register_id">>,
-  ) {
+  async updateRegisterById({ id }: Id, update: PartialRegisterWithoutId) {
     const user_profile_id = update.user_profile_id ?? null;
     const activity_id = update.activity_id ?? null;
-    return await this.sql`
+    const rows = (await this.sql`
     UPDATE register
     SET
     user_profile_id = COALESCE(${user_profile_id}, user_profile_id),
     activity_id = COALESCE(${activity_id}, activity_id)
     WHERE register_id = ${id}
-    RETURNING *`;
+    RETURNING *`) as Register[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async deleteRegisterById(id: number) {
-    return await this.sql`
+  async deleteRegisterById({ id }: Id) {
+    const rows = (await this.sql`
     DELETE FROM register
     WHERE register_id = ${id}
-    RETURNING *`;
+    RETURNING *`) as Register[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   // ----- Event -----
 
   async createEvent(newEvent: EventWithoutId) {
-    return await this.sql`
+    const rows = (await this.sql`
       INSERT INTO event
       (event_name, event_description, event_start, event_end, user_profile_id)
       VALUES
@@ -209,20 +259,26 @@ export class Repository {
        ${newEvent.event_start},
        ${newEvent.event_end},
        ${newEvent.user_profile_id})
-      RETURNING *`;
+      RETURNING *`) as Event[];
+    return rows[0];
   }
 
   async readAllEvents() {
-    return await this.sql`
+    const rows = (await this.sql`
       SELECT *
-      FROM event`;
+      FROM event`) as Event[];
+    return rows;
   }
 
   async readEventById({ id }: Id) {
-    return await this.sql`
+    const rows = (await this.sql`
       SELECT *
       FROM event
-      WHERE event_id = ${id}`;
+      WHERE event_id = ${id}`) as Event[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   async updateEventById({ id }: Id, partialEvent: PartialEventWithoutId) {
@@ -231,7 +287,7 @@ export class Repository {
     const start = partialEvent.event_start ?? null;
     const end = partialEvent.event_end ?? null;
     const ref = partialEvent.user_profile_id ?? null;
-    return await this.sql`
+    const rows = (await this.sql`
       UPDATE event
       SET
       event_name = COALESCE(${name}, event_name),
@@ -240,20 +296,28 @@ export class Repository {
       event_end = COALESCE(${end}, event_end),
       user_profile_id = COALESCE(${ref}, user_profile_id)
       WHERE event_id = ${id}
-      RETURNING *`;
+      RETURNING *`) as Event[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   async deleteEventById({ id }: Id) {
-    return await this.sql`
+    const rows = (await this.sql`
       DELETE FROM event
       WHERE event_id = ${id}
-      RETURNING *`;
+      RETURNING *`) as Event[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   // ----- Activity -----
 
-  async createActivity(newActivity: Omit<Activity, "activity_id">) {
-    return await this.sql`
+  async createActivity(newActivity: ActivityWithoutId) {
+    const rows = (await this.sql`
       INSERT INTO activity
       (activity_name, activity_description, activity_start, activity_end, activity_real_start, activity_real_end, event_id, room_id)
       VALUES
@@ -265,25 +329,31 @@ export class Repository {
        ${newActivity.activity_real_end},
        ${newActivity.event_id},
        ${newActivity.room_id})
-      RETURNING *`;
+      RETURNING *`) as Activity[];
+    return rows[0];
   }
 
   async readAllActivities() {
-    return await this.sql`
+    const rows = (await this.sql`
       SELECT *
-      FROM activity`;
+      FROM activity`) as Activity[];
+    return rows;
   }
 
-  async readActivityById(id: number) {
-    return await this.sql`
+  async readActivityById({ id }: Id) {
+    const rows = (await this.sql`
       SELECT *
       FROM activity
-      WHERE activity_id = ${id}`;
+      WHERE activity_id = ${id}`) as Activity[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   async updateActivityById(
-    id: number,
-    partialActivity: Partial<Omit<Activity, "activity_id">>,
+    { id }: Id,
+    partialActivity: PartialActivityWithoutId,
   ) {
     const name = partialActivity.activity_name ?? null;
     const description = partialActivity.activity_description ?? null;
@@ -293,7 +363,7 @@ export class Repository {
     const realEnd = partialActivity.activity_real_end ?? null;
     const refEvent = partialActivity.event_id ?? null;
     const refRoom = partialActivity.room_id ?? null;
-    return await this.sql`
+    const rows = (await this.sql`
       UPDATE activity
       SET
       activity_name = COALESCE(${name}, activity_name),
@@ -305,138 +375,151 @@ export class Repository {
       event_id = COALESCE(${refEvent}, event_id),
       room_id = COALESCE(${refRoom}, room_id)
       WHERE activity_id = ${id}
-      RETURNING *`;
+      RETURNING *`) as Activity[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async deleteActivityById(id: number) {
-    return await this.sql`
+  async deleteActivityById({ id }: Id) {
+    const rows = (await this.sql`
       DELETE FROM activity
       WHERE activity_id = ${id}
-      RETURNING *`;
+      RETURNING *`) as Activity[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   // ----- Room -----
 
-  async createRoom(newRoom: Omit<Room, "room_id">) {
-    return await this.sql`
+  async createRoom(newRoom: RoomWithoutId) {
+    const rows = (await this.sql`
     INSERT INTO room
     (room_name, room_location, room_capacity)
     VALUES
     (${newRoom.room_name}, ${newRoom.room_location}, ${newRoom.room_capacity})
-    RETURNING *`;
+    RETURNING *`) as Room[];
+    return rows[0];
   }
 
   async readRoom() {
-    return await this.sql`
-    SELECT * FROM room`;
+    const rows = (await this.sql`
+    SELECT * FROM room`) as Room[];
+    return rows;
   }
 
-  async readRoomById(id: number) {
-    return await this.sql`
+  async readRoomById({ id }: Id) {
+    const rows = (await this.sql`
     SELECT * FROM room
-    WHERE room_id = ${id}`;
+    WHERE room_id = ${id}`) as Room[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async updateRoomById(
-    id: number,
-    partialRoom: Partial<Omit<Room, "room_id">>,
-  ) {
+  async updateRoomById({ id }: Id, partialRoom: PartialRoomWithoutId) {
     const name = partialRoom.room_name ?? null;
     const location = partialRoom.room_location ?? null;
     const capacity = partialRoom.room_capacity ?? null;
-    return await this.sql`
+    const rows = (await this.sql`
     UPDATE room
     SET
     room_name = COALESCE(${name}, room_name),
     room_location = COALESCE(${location}, room_location),
     room_capacity = COALESCE(${capacity}, room_capacity)
     WHERE room_id = ${id}
-    RETURNING *`;
+    RETURNING *`) as Room[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async deleteRoomById(id: number) {
-    return await this.sql`
+  async deleteRoomById({ id }: Id) {
+    const rows = (await this.sql`
     DELETE FROM room
     WHERE room_id = ${id}
-    RETURNING *`;
+    RETURNING *`) as Room[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   // ----- Run -----
 
-  async createRun(newRun: Omit<Run, "run_id">) {
-    return await this.sql`
+  async createRun(newRun: RunWithoutId) {
+    const rows = (await this.sql`
     INSERT INTO Run
     (ref_user_profile_id, ref_activity_id)
     VALUES
     (${newRun.ref_user_profile_id}, ${newRun.ref_activity_id})
-    RETURNING *`;
+    RETURNING *`) as Run[];
+    return rows[0];
   }
 
   async readRun() {
-    return this.sql`
-    SELECT * FROM run`;
+    const rows = (await this.sql`
+    SELECT * FROM run`) as Run[];
+    return rows;
   }
 
-  async readRunById(id: number) {
-    return this.sql`
+  async readRunById({ id }: Id) {
+    const rows = (await this.sql`
     SELECT * FROM run
-    WHERE run_id = ${id}`;
+    WHERE run_id = ${id}`) as Run[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async updateRunById(id: number, partialRun: Partial<Omit<Run, "run_id">>) {
+  async updateRunById(id: number, partialRun: PartialRunWithoutId) {
     const ref_user_profile_id = partialRun.ref_user_profile_id ?? null;
     const ref_activity_id = partialRun.ref_activity_id ?? null;
-    return await this.sql`
+    const rows = (await this.sql`
     UPDATE run
     SET
     ref_user_profile_id = COALESCE(${ref_user_profile_id}, ref_user_profile_id)
     ref_activity_id = COALESCE(${ref_activity_id}, ref_activity_id)
     WHERE run_id = ${id}
-    RETURNING *`;
+    RETURNING *`) as Run[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
-  async deleteRunById(id: number) {
-    return await this.sql`
+  async deleteRunById({ id }: Id) {
+    const rows = (await this.sql`
     DELETE FROM run
     WHERE run_id = ${id}
-    RETURNING *`;
+    RETURNING *`) as Run[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   // ----- Complex requests ------
 
-  async getEventAndActivitiesByEventId({ id }: Id) {
-    const res = await this.readEventById({ id });
-    const row = res[0];
-    const event: Event = {
-      event_id: Number(row.event_id),
-      event_name: String(row.event_name),
-      event_description: row.event_description,
-      event_start: new Date(row.event_start),
-      event_end: new Date(row.event_end),
-      user_profile_id: Number(row.user_profile_id),
-    };
-    const rows = await this.sql`
-    SELECT *
-    FROM activity
-    WHERE event_id = ${id}`;
-    const to_return: EventWithActivities = {
-      event,
-      activities: rows.map((row) => {
-        const activity: Activity = {
-          activity_id: Number(row.activity_id),
-          activity_name: String(row.activity_name),
-          activity_description: String(row.activity_description),
-          activity_start: new Date(row.activity_start),
-          activity_end: new Date(row.activity_end),
-          activity_real_start: new Date(row.activity_real_start),
-          activity_real_end: new Date(row.activity_real_end),
-          event_id: Number(row.event_id),
-          room_id: Number(row.room_id),
-        };
-        return activity;
-      }),
-    };
-    return to_return;
+  async getEventWithActivitiesByEventId({ id }: Id) {
+    const rows = (await this.sql`
+    SELECT
+      event.*,
+      json_agg(activity.*) AS activities
+    FROM event
+    LEFT JOIN activity ON activity.event_id = event.event_id
+    WHERE event.event_id = ${id}
+    GROUP BY event.event_id`) as EventWithActivities[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found");
+    }
+    return rows[0];
   }
 
   async end() {

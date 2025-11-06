@@ -11,8 +11,18 @@ export const ZUserAuth = z.object({
   user_auth_login: z.string(),
   user_auth_password: z.string(),
 });
+export const ZUserAuthWithoutId = ZUserAuth.omit({ user_auth_id: true });
+export const ZUserAuthWithoutPassword = ZUserAuth.omit({
+  user_auth_password: true,
+});
+export const ZPartialUserAuthWithoutId = ZUserAuthWithoutId.partial();
 
 export type UserAuth = z.infer<typeof ZUserAuth>;
+export type UserAuthWithoutId = z.infer<typeof ZUserAuthWithoutId>;
+export type PartialUserAuthWithoutId = z.infer<
+  typeof ZPartialUserAuthWithoutId
+>;
+export type UserAuthWithoutPassword = z.infer<typeof ZUserAuthWithoutPassword>;
 
 export const ZUserProfile = z.object({
   user_profile_id: z.coerce.number().positive().int(),
@@ -20,16 +30,30 @@ export const ZUserProfile = z.object({
   user_profile_role: z.enum(["admin", "staff", "speaker", "guest"]),
   user_auth_id: z.coerce.number().positive().int(),
 });
+export const ZUserProfileWithoutId = ZUserProfile.omit({
+  user_profile_id: true,
+});
+export const ZPartialUserProfileWithoutId = ZUserProfileWithoutId.partial();
 
 export type UserProfile = z.infer<typeof ZUserProfile>;
+export type UserProfileWithoutId = z.infer<typeof ZUserProfileWithoutId>;
+export type PartialUserProfileWithoutId = z.infer<
+  typeof ZPartialUserProfileWithoutId
+>;
 
 export const ZRegister = z.object({
   register_id: z.coerce.number().positive().int(),
   user_profile_id: z.coerce.number().positive().int(),
   activity_id: z.coerce.number().positive().int(),
 });
+export const ZRegisterWithoutId = ZRegister.omit({ register_id: true });
+export const ZPartialRegisterWithoutId = ZRegisterWithoutId.partial();
 
 export type Register = z.infer<typeof ZRegister>;
+export type RegisterWithoutId = z.infer<typeof ZRegisterWithoutId>;
+export type PartialRegisterWithoutId = z.infer<
+  typeof ZPartialRegisterWithoutId
+>;
 
 export const ZEvent = z.object({
   event_id: z.coerce.number().positive().int(),
@@ -57,8 +81,14 @@ export const ZActivity = z.object({
   event_id: z.coerce.number().positive().int(),
   room_id: z.coerce.number().positive().int(),
 });
+export const ZActivityWithoutId = ZActivity.omit({ activity_id: true });
+export const ZPartialActivityWithoutId = ZActivityWithoutId.partial();
 
 export type Activity = z.infer<typeof ZActivity>;
+export type ActivityWithoutId = z.infer<typeof ZActivityWithoutId>;
+export type PartialActivityWithoutId = z.infer<
+  typeof ZPartialActivityWithoutId
+>;
 
 export const ZRoom = z.object({
   room_id: z.coerce.number().positive().int(),
@@ -66,19 +96,26 @@ export const ZRoom = z.object({
   room_location: z.string(),
   room_capacity: z.coerce.number().positive().int(),
 });
+export const ZRoomWithoutId = ZRoom.omit({ room_id: true });
+export const ZPartialRoomWithoutId = ZRoomWithoutId.partial();
 
 export type Room = z.infer<typeof ZRoom>;
+export type RoomWithoutId = z.infer<typeof ZRoomWithoutId>;
+export type PartialRoomWithoutId = z.infer<typeof ZPartialRoomWithoutId>;
 
 export const ZRun = z.object({
   run_id: z.coerce.number().positive().int(),
   ref_user_profile_id: z.coerce.number().positive().int(),
   ref_activity_id: z.coerce.number().positive().int(),
 });
+export const ZRunWithoutId = ZRun.omit({ run_id: true });
+export const ZPartialRunWithoutId = ZRunWithoutId.partial();
 
 export type Run = z.infer<typeof ZRun>;
+export type RunWithoutId = z.infer<typeof ZRunWithoutId>;
+export type PartialRunWithoutId = z.infer<typeof ZPartialRunWithoutId>;
 
-export const ZEventWithActivities = z.object({
-  event: ZEvent,
+export const ZEventWithActivities = ZEvent.extend({
   activities: ZActivity.array(),
 });
 
