@@ -1,3 +1,4 @@
+import fastifyCookie from "@fastify/cookie";
 import dotenv from "dotenv";
 import Fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
@@ -14,11 +15,13 @@ import {
   type Id,
   type PartialActivityWithoutId,
   type PartialEventWithoutId,
+  type UserProfile,
   ZActivityWithoutId,
   ZEventWithoutId,
   ZId,
   ZPartialEventWithoutId,
 } from "./models.js";
+import { TokenManager } from "./token_manager.js";
 
 dotenv.config();
 
@@ -28,6 +31,7 @@ function start_web_server() {
   }).withTypeProvider<ZodTypeProvider>();
   web_server.setValidatorCompiler(validatorCompiler);
   web_server.setSerializerCompiler(serializerCompiler);
+  web_server.register(fastifyCookie, {});
 
   // ----- Error Handler -----
 
@@ -37,6 +41,19 @@ function start_web_server() {
       return error;
     }
     if (error instanceof z.ZodError) {
+      return error;
+    }
+    // to catch JWT errors
+    if (
+      error instanceof Error &&
+      (/signature/i.test(error.name) ||
+        /expired/i.test(error.name) ||
+        /signature/i.test(error.message) ||
+        /expired/i.test(error.message) ||
+        error.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED" ||
+        error.code === "ERR_JWT_EXPIRED")
+    ) {
+      reply.code(401);
       return error;
     }
     // to catch Postgres errors
@@ -59,9 +76,16 @@ function start_web_server() {
     }
     if (error instanceof CustomError) {
       reply.code(error.code);
+      if (error.table) {
+        return {
+          subject: error.subject,
+          table: error.table,
+          message: error.message,
+          statusCode: error.code,
+        };
+      }
       return {
         subject: error.subject,
-        table: error.table,
         message: error.message,
         statusCode: error.code,
       };
@@ -74,6 +98,44 @@ function start_web_server() {
   // ----- Set Repo -----
 
   const repo = new Repository();
+  const tokenManager = new TokenManager();
+
+  // ----- Token -----
+
+  web_server.get("/token", async (_req, res) => {
+    const tok = await tokenManager.encode(
+      {
+        sub: "example",
+        roles: ["admin"],
+      },
+      false,
+    );
+    res.setCookie("access_token", tok, {
+      secure: true,
+      sameSite: false,
+      //expires: addMinutes(new Date(), 1),
+    });
+    res.status(204);
+  });
+
+  web_server.get<{
+    Params: { role_allowed: UserProfile["user_profile_role"] };
+  }>(
+    "/token_check/:role_allowed",
+    {
+      schema: {
+        params: z.object({
+          role_allowed: z.enum(["admin", "staff", "speaker", "guest"]),
+        }),
+      },
+    },
+    async (req) => {
+      const payload = await tokenManager.verify(req.cookies.access_token, [
+        req.params.role_allowed,
+      ]);
+      return { payload };
+    },
+  );
 
   // ----- Event routes -----
 
@@ -111,7 +173,7 @@ function start_web_server() {
     { schema: { params: ZId, body: ZPartialEventWithoutId } },
     async (req) => {
       if (!req.body) {
-        throw new CustomError("REQUEST", "event", 400, "Missing body");
+        throw new CustomError("REQUEST", 400, "Missing body", "event");
       }
       const event = await repo.updateEventById(req.params, req.body);
       return { event_id: event.event_id, message: "updated" };
@@ -154,7 +216,7 @@ function start_web_server() {
     "/activities/:id",
     async (req) => {
       if (!req.body) {
-        throw new CustomError("REQUEST", "activity", 400, "Missing body");
+        throw new CustomError("REQUEST", 400, "Missing body", "activity");
       }
       const activity = await repo.updateActivityById(req.params, req.body);
       return { activity_id: activity.activity_id, message: "updated" };

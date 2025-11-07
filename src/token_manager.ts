@@ -1,5 +1,6 @@
 import { type JWTPayload, jwtVerify, SignJWT } from "jose";
-import type { CreateJwtOptions, JwtClaims } from "./models.js";
+import { CustomError } from "./custom_error.js";
+import type { CreateJwtOptions, JwtClaims, UserProfile } from "./models.js";
 
 export class TokenManager {
   secret: Uint8Array;
@@ -33,19 +34,34 @@ export class TokenManager {
       const now = Math.floor(Date.now() / 1000);
       signer.setIssuedAt(now).setExpirationTime(now + 60);
     } else {
-      signer.setIssuedAt().setExpirationTime("1h");
+      signer.setIssuedAt().setExpirationTime("1m");
     }
     return await signer.sign(this.secret);
   }
 
-  async verify(encoded_token: string): Promise<JwtClaims> {
+  async verify(
+    encoded_token: string | undefined,
+    roles_allowed?: UserProfile["user_profile_role"][],
+  ): Promise<JwtClaims> {
+    if (!encoded_token) {
+      throw new CustomError("REQUEST", 401, "No token given");
+    }
     const { payload } = await jwtVerify(encoded_token, this.secret, {
       algorithms: ["HS256"],
     });
     if (!this.isJwtClaims(payload)) {
       throw new Error("Invalid token payload");
     }
-    return payload;
+    console.log(roles_allowed);
+    console.log(payload.roles);
+    if (roles_allowed) {
+      for (const role of payload.roles) {
+        if (roles_allowed.find((curr) => curr === role)) {
+          return payload;
+        }
+      }
+    }
+    throw new CustomError("REQUEST", 403, "Valid token but forbidden");
   }
 
   private isJwtClaims(payload: JWTPayload): payload is JwtClaims {

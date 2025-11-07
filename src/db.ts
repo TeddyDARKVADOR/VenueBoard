@@ -75,7 +75,7 @@ export class Repository {
       FROM user_auth
       WHERE user_auth_id = ${id}`) as UserAuthWithoutPassword[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "user_auth", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
     }
     return rows[0];
   }
@@ -99,7 +99,7 @@ export class Repository {
       WHERE user_auth_id = ${id}
       RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "user_auth", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
     }
     return rows[0];
   }
@@ -110,7 +110,7 @@ export class Repository {
       WHERE user_auth_id = ${id}
       RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "user_auth", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
     }
     return rows[0];
   }
@@ -122,7 +122,7 @@ export class Repository {
       WHERE user_auth_login = ${user.user_auth_login}
     `) as { user_auth_password: string }[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "user_auth", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
     }
     const storedHash = rows[0].user_auth_password;
     return await argon2.verify(storedHash, user.user_auth_password);
@@ -154,7 +154,7 @@ export class Repository {
       FROM user_profile
       WHERE user_profile_id = ${id}`) as UserProfile[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "user_profile", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
     }
     return rows[0];
   }
@@ -173,7 +173,7 @@ export class Repository {
       WHERE user_profile_id = ${id}
       RETURNING *`) as UserProfile[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "user_profile", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
     }
     return rows[0];
   }
@@ -184,7 +184,7 @@ export class Repository {
       WHERE user_profile_id = ${id}
       RETURNING *`;
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "user_profile", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
     }
     return rows[0];
   }
@@ -214,7 +214,7 @@ export class Repository {
     FROM register
     WHERE register_id = ${id}`) as Register[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "register", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "register");
     }
     return rows[0];
   }
@@ -230,7 +230,7 @@ export class Repository {
     WHERE register_id = ${id}
     RETURNING *`) as Register[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "register", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "register");
     }
     return rows[0];
   }
@@ -241,7 +241,7 @@ export class Repository {
     WHERE register_id = ${id}
     RETURNING *`) as Register[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "register", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "register");
     }
     return rows[0];
   }
@@ -252,9 +252,9 @@ export class Repository {
     if (newEvent.event_start >= newEvent.event_end) {
       throw new CustomError(
         "LOGIC",
-        "event",
         409,
         "Event end needs to be older than its start",
+        "event",
       );
     }
     const rows = (await this.sql`
@@ -283,7 +283,7 @@ export class Repository {
       FROM event
       WHERE event_id = ${id}`) as Event[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "event", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
     return rows[0];
   }
@@ -301,9 +301,9 @@ export class Repository {
 
     const error = new CustomError(
       "LOGIC",
-      "event",
       409,
       "Event end needs to be older than its start",
+      "event",
     );
     if (!start || !end) {
       if (start || end) {
@@ -332,7 +332,7 @@ export class Repository {
       WHERE event_id = ${id}
       RETURNING *`) as Event[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "event", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
     return rows[0];
   }
@@ -343,7 +343,7 @@ export class Repository {
       WHERE event_id = ${id}
       RETURNING *`) as Event[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "event", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
     return rows[0];
   }
@@ -354,9 +354,9 @@ export class Repository {
     if (newActivity.activity_start >= newActivity.activity_end) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         "Activity end needs to be older than its start",
+        "activity",
       );
     }
     if (
@@ -366,9 +366,9 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         "Activity real end needs to be older than its real start",
+        "activity",
       );
     }
     const event = await this.readEventById({ id: newActivity.event_id });
@@ -380,9 +380,9 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         "Activity's end and start needs to be between his event's dates",
+        "activity",
       );
     }
 
@@ -415,7 +415,7 @@ export class Repository {
       FROM activity
       WHERE activity_id = ${id}`) as Activity[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "activity", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "activity");
     }
     return rows[0];
   }
@@ -444,17 +444,17 @@ export class Repository {
     if (start && end && start >= end) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         "Activity end needs to be older than its start",
+        "activity",
       );
     }
     if (realStart && realEnd && realStart >= realEnd) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         "Activity real end needs to be older than its real start",
+        "activity",
       );
     }
     const activity = await this.readActivityById({ id });
@@ -464,9 +464,9 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         `Activity's ${start ? "start" : "end"} needs to be ${start ? "before activity end" : "after activity start"}`,
+        "activity",
       );
     }
     if (
@@ -481,9 +481,9 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         `Activity's real ${realStart ? "start" : "end"} needs to be ${realStart ? "before activity real end" : "after activity  real start"}`,
+        "activity",
       );
     }
     const event = await this.readEventById({
@@ -495,9 +495,9 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        "activity",
         409,
         "Activity's end and start needs to be between his event's dates",
+        "activity",
       );
     }
 
@@ -515,7 +515,7 @@ export class Repository {
       WHERE activity_id = ${id}
       RETURNING *`) as Activity[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "activity", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "activity");
     }
     return rows[0];
   }
@@ -526,7 +526,7 @@ export class Repository {
       WHERE activity_id = ${id}
       RETURNING *`) as Activity[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "activity", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "activity");
     }
     return rows[0];
   }
@@ -554,7 +554,7 @@ export class Repository {
     SELECT * FROM room
     WHERE room_id = ${id}`) as Room[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "room", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "room");
     }
     return rows[0];
   }
@@ -572,7 +572,7 @@ export class Repository {
     WHERE room_id = ${id}
     RETURNING *`) as Room[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "room", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "room");
     }
     return rows[0];
   }
@@ -583,7 +583,7 @@ export class Repository {
     WHERE room_id = ${id}
     RETURNING *`) as Room[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "room", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "room");
     }
     return rows[0];
   }
@@ -611,7 +611,7 @@ export class Repository {
     SELECT * FROM run
     WHERE run_id = ${id}`) as Run[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "run", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "run");
     }
     return rows[0];
   }
@@ -627,7 +627,7 @@ export class Repository {
     WHERE run_id = ${id}
     RETURNING *`) as Run[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "run", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "run");
     }
     return rows[0];
   }
@@ -638,7 +638,7 @@ export class Repository {
     WHERE run_id = ${id}
     RETURNING *`) as Run[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "run", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "run");
     }
     return rows[0];
   }
@@ -655,7 +655,7 @@ export class Repository {
     WHERE event.event_id = ${id}
     GROUP BY event.event_id`) as EventWithActivities[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", "event", 404, "Not found");
+      throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
     return rows[0];
   }

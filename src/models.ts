@@ -123,7 +123,7 @@ export type EventWithActivities = z.infer<typeof ZEventWithActivities>;
 
 export type JwtClaims = {
   sub: string;
-  roles: string[];
+  roles: UserProfile["user_profile_role"][];
   iat: number;
   exp: number;
 };
