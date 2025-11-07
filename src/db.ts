@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import postgres from "postgres";
-import { CustomError } from "./CustomError.js";
+import { CustomError } from "./custom_error.js";
 import type {
   Activity,
   ActivityWithoutId,

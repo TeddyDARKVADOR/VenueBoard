@@ -6,7 +6,7 @@ import {
   validatorCompiler,
 } from "fastify-type-provider-zod";
 import z from "zod";
-import { CustomError } from "./CustomError.js";
+import { CustomError } from "./custom_error.js";
 import { Repository } from "./db.js";
 import {
   type ActivityWithoutId,
