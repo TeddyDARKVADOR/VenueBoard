@@ -26,7 +26,6 @@ import type {
   UserProfile,
   UserProfileWithoutId,
 } from "./models.js";
-import { partial } from "zod/mini";
 
 const ARGON2OPTS = {
   type: argon2.argon2id,
@@ -292,8 +291,12 @@ export class Repository {
   async updateEventById({ id }: Id, partialEvent: PartialEventWithoutId) {
     const name = partialEvent.event_name ?? null;
     const description = partialEvent.event_description ?? null;
-    const start = partialEvent.event_start ? new Date(partialEvent.event_start) : null;
-    const end = partialEvent.event_end ? new Date(partialEvent.event_end) : null;
+    const start = partialEvent.event_start
+      ? new Date(partialEvent.event_start)
+      : null;
+    const end = partialEvent.event_end
+      ? new Date(partialEvent.event_end)
+      : null;
     const ref = partialEvent.user_profile_id ?? null;
 
     const error = new CustomError(
@@ -423,10 +426,18 @@ export class Repository {
   ) {
     const name = partialActivity.activity_name ?? null;
     const description = partialActivity.activity_description ?? null;
-    const start = partialActivity.activity_start ? new Date(partialActivity.activity_start) : null;
-    const end = partialActivity.activity_end ? new Date(partialActivity.activity_end) : null;
-    const realStart = partialActivity.activity_real_start ?new Date(partialActivity.activity_real_start) : null;
-    const realEnd = partialActivity.activity_real_end ? new Date(partialActivity.activity_real_end) : null;
+    const start = partialActivity.activity_start
+      ? new Date(partialActivity.activity_start)
+      : null;
+    const end = partialActivity.activity_end
+      ? new Date(partialActivity.activity_end)
+      : null;
+    const realStart = partialActivity.activity_real_start
+      ? new Date(partialActivity.activity_real_start)
+      : null;
+    const realEnd = partialActivity.activity_real_end
+      ? new Date(partialActivity.activity_real_end)
+      : null;
     const eventId = partialActivity.event_id ?? null;
     const roomId = partialActivity.room_id ?? null;
 

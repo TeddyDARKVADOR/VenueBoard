@@ -99,7 +99,7 @@ function start_web_server() {
   });
 
   web_server.get<{ Params: Id }>(
-    "/event_with_activities/:id",
+    "/events/:id/activities",
     { schema: { params: ZId } },
     async (req) => {
       return await repo.readEventWithActivitiesByEventId(req.params);
