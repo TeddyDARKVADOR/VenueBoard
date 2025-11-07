@@ -110,7 +110,7 @@ function start_web_server() {
     { schema: { params: ZId, body: ZPartialEventWithoutId } },
     async (req) => {
       if (!req.body) {
-        throw new CustomError("REQUEST", 400, "Missing body");
+        throw new CustomError("REQUEST", "event", 400, "Missing body");
       }
       const event = await repo.updateEventById(req.params, req.body);
       return { event_id: event.event_id, message: "updated" };
@@ -153,7 +153,7 @@ function start_web_server() {
     "/activities/:id",
     async (req) => {
       if (!req.body) {
-        throw new CustomError("REQUEST", 400, "Missing body");
+        throw new CustomError("REQUEST", "activity", 400, "Missing body");
       }
       const activity = await repo.updateActivityById(req.params, req.body);
       return { activity_id: activity.activity_id, message: "updated" };
