@@ -61,6 +61,7 @@ function start_web_server() {
       reply.code(error.code);
       return {
         subject: error.subject,
+        table: error.table,
         message: error.message,
         statusCode: error.code,
       };
