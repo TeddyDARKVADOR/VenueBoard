@@ -106,7 +106,6 @@ function start_web_server() {
     req.claims = req.cookies.access_token
       ? await tokenManager.verify(req.cookies.access_token)
       : null;
-    console.log("after prehandler hook");
   });
 
   // ----- Token -----
@@ -144,9 +143,11 @@ function start_web_server() {
 
   web_server.get<{ Params: ObjectId }>(
     "/events/:id",
-    { schema: { params: ZObjectId }, preHandler: requireRoles(["admin"]) },
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "guest"]),
+    },
     async (req) => {
-      console.log("dans le handler");
       return await repo.readEventById(req.params);
     },
   );

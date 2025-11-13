@@ -75,20 +75,16 @@ function fromBase64url(source: string): Uint8Array {
 export function requireRoles(
   roles: UserProfile["user_profile_role"][],
 ): (req: FastifyRequest) => void {
-  return (req: FastifyRequest) => {
-    console.log("dans le require");
+  return async (req: FastifyRequest) => {
     if (roles.length === 0) {
       return;
     }
-    console.log("1");
     if (!req.claims) {
       throw new CustomError("TOKEN", 401, "unauthorized");
     }
-    console.log("2");
     if (!roles.find((curr) => curr === req.claims?.role)) {
       throw new CustomError("REQUEST", 403, "forbidden");
     }
-    console.log("3");
     return;
   };
 }
