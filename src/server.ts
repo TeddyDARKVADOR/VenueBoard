@@ -42,19 +42,19 @@ function start_web_server() {
 
   // ----- Error Handler -----
 
-  web_server.setErrorHandler(async (error, _, reply) => {
+  web_server.setErrorHandler(async (error, _req, reply) => {
     if (hasZodFastifySchemaValidationErrors(error)) {
       return error.message;
     }
     // to catch JWT errors
     if (
-      error instanceof Error &&
-      (/signature/i.test(error.name) ||
-        /expired/i.test(error.name) ||
-        /signature/i.test(error.message) ||
-        /expired/i.test(error.message) ||
-        error.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED" ||
-        error.code === "ERR_JWT_EXPIRED")
+      error.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED" ||
+      error.code === "ERR_JWT_EXPIRED" ||
+      error.code === "ERR_JWS_INVALID" ||
+      error.code === "ERR_JWT_INVALID" ||
+      error.code === "ERR_JWT_CLAIM_VALIDATION_FAILED" ||
+      error.code === "ERR_JWKS_NO_MATCHING_KEY" ||
+      error.code === "ERR_JWKS_TIMEOUT"
     ) {
       reply.code(401);
       return error.message;
@@ -103,6 +103,10 @@ function start_web_server() {
   // ----- Hooks -----
 
   web_server.addHook("preHandler", async (req) => {
+    if (req.originalUrl === "/token" || req.originalUrl === "/login") {
+      req.claims = null;
+      return;
+    }
     req.claims = req.cookies.access_token
       ? await tokenManager.verify(req.cookies.access_token)
       : null;
