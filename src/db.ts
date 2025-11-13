@@ -7,7 +7,7 @@ import type {
   Event,
   EventWithActivities,
   EventWithoutId,
-  Id,
+  ObjectId,
   PartialActivityWithoutId,
   PartialEventWithoutId,
   PartialRegisterWithoutId,
@@ -69,7 +69,7 @@ export class Repository {
     return rows;
   }
 
-  async readUserAuthById({ id }: Id) {
+  async readUserAuthById({ id }: ObjectId) {
     const rows = (await this.sql`
       SELECT user_auth_id, user_auth_login
       FROM user_auth
@@ -81,7 +81,7 @@ export class Repository {
   }
 
   async updateUserAuthById(
-    { id }: Id,
+    { id }: ObjectId,
     partialUserAuth: PartialUserAuthWithoutId,
   ) {
     const login = partialUserAuth.user_auth_login ?? null;
@@ -104,7 +104,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteUserAuthById({ id }: Id) {
+  async deleteUserAuthById({ id }: ObjectId) {
     const rows = (await this.sql`
       DELETE FROM user_auth
       WHERE user_auth_id = ${id}
@@ -148,7 +148,7 @@ export class Repository {
     return rows;
   }
 
-  async readUserProfileById({ id }: Id) {
+  async readUserProfileById({ id }: ObjectId) {
     const rows = (await this.sql`
       SELECT *
       FROM user_profile
@@ -160,7 +160,7 @@ export class Repository {
   }
 
   async updateUserProfileById(
-    { id }: Id,
+    { id }: ObjectId,
     partialUserProfile: PartialUserProfileWithoutId,
   ) {
     const name = partialUserProfile.user_profile_name ?? null;
@@ -178,7 +178,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteUserProfileById({ id }: Id) {
+  async deleteUserProfileById({ id }: ObjectId) {
     const rows = await this.sql`
       DELETE FROM user_profile
       WHERE user_profile_id = ${id}
@@ -208,7 +208,7 @@ export class Repository {
     return rows;
   }
 
-  async readRegisterById({ id }: Id) {
+  async readRegisterById({ id }: ObjectId) {
     const rows = (await this.sql`
     SELECT *
     FROM register
@@ -219,7 +219,7 @@ export class Repository {
     return rows[0];
   }
 
-  async updateRegisterById({ id }: Id, update: PartialRegisterWithoutId) {
+  async updateRegisterById({ id }: ObjectId, update: PartialRegisterWithoutId) {
     const user_profile_id = update.user_profile_id ?? null;
     const activity_id = update.activity_id ?? null;
     const rows = (await this.sql`
@@ -235,7 +235,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteRegisterById({ id }: Id) {
+  async deleteRegisterById({ id }: ObjectId) {
     const rows = (await this.sql`
     DELETE FROM register
     WHERE register_id = ${id}
@@ -277,7 +277,7 @@ export class Repository {
     return rows;
   }
 
-  async readEventById({ id }: Id) {
+  async readEventById({ id }: ObjectId) {
     const rows = (await this.sql`
       SELECT *
       FROM event
@@ -288,7 +288,7 @@ export class Repository {
     return rows[0];
   }
 
-  async updateEventById({ id }: Id, partialEvent: PartialEventWithoutId) {
+  async updateEventById({ id }: ObjectId, partialEvent: PartialEventWithoutId) {
     const name = partialEvent.event_name ?? null;
     const description = partialEvent.event_description ?? null;
     const start = partialEvent.event_start
@@ -337,7 +337,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteEventById({ id }: Id) {
+  async deleteEventById({ id }: ObjectId) {
     const rows = (await this.sql`
       DELETE FROM event
       WHERE event_id = ${id}
@@ -409,7 +409,7 @@ export class Repository {
     return rows;
   }
 
-  async readActivityById({ id }: Id) {
+  async readActivityById({ id }: ObjectId) {
     const rows = (await this.sql`
       SELECT *
       FROM activity
@@ -421,7 +421,7 @@ export class Repository {
   }
 
   async updateActivityById(
-    { id }: Id,
+    { id }: ObjectId,
     partialActivity: PartialActivityWithoutId,
   ) {
     const name = partialActivity.activity_name ?? null;
@@ -520,7 +520,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteActivityById({ id }: Id) {
+  async deleteActivityById({ id }: ObjectId) {
     const rows = (await this.sql`
       DELETE FROM activity
       WHERE activity_id = ${id}
@@ -549,7 +549,7 @@ export class Repository {
     return rows;
   }
 
-  async readRoomById({ id }: Id) {
+  async readRoomById({ id }: ObjectId) {
     const rows = (await this.sql`
     SELECT * FROM room
     WHERE room_id = ${id}`) as Room[];
@@ -559,7 +559,7 @@ export class Repository {
     return rows[0];
   }
 
-  async updateRoomById({ id }: Id, partialRoom: PartialRoomWithoutId) {
+  async updateRoomById({ id }: ObjectId, partialRoom: PartialRoomWithoutId) {
     const name = partialRoom.room_name ?? null;
     const location = partialRoom.room_location ?? null;
     const capacity = partialRoom.room_capacity ?? null;
@@ -577,7 +577,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteRoomById({ id }: Id) {
+  async deleteRoomById({ id }: ObjectId) {
     const rows = (await this.sql`
     DELETE FROM room
     WHERE room_id = ${id}
@@ -606,7 +606,7 @@ export class Repository {
     return rows;
   }
 
-  async readRunById({ id }: Id) {
+  async readRunById({ id }: ObjectId) {
     const rows = (await this.sql`
     SELECT * FROM run
     WHERE run_id = ${id}`) as Run[];
@@ -632,7 +632,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteRunById({ id }: Id) {
+  async deleteRunById({ id }: ObjectId) {
     const rows = (await this.sql`
     DELETE FROM run
     WHERE run_id = ${id}
@@ -645,7 +645,7 @@ export class Repository {
 
   // ----- Complex requests ------
 
-  async readEventWithActivitiesByEventId({ id }: Id) {
+  async readEventWithActivitiesByEventId({ id }: ObjectId) {
     const rows = (await this.sql`
     SELECT
       event.*,
@@ -654,6 +654,20 @@ export class Repository {
     LEFT JOIN activity ON activity.event_id = event.event_id
     WHERE event.event_id = ${id}
     GROUP BY event.event_id`) as EventWithActivities[];
+    if (rows.length === 0) {
+      throw new CustomError("POSTGRES", 404, "Not found", "event");
+    }
+    return rows[0];
+  }
+
+  async readActivityWithEventByActivityId({ id }: ObjectId) {
+    const rows = await this.sql`
+     SELECT
+      activity.*,
+      row_to_json(event) AS event
+    FROM activity
+    LEFT JOIN event ON activity.event_id = event.event_id
+    WHERE activity.activity_id = ${id}`;
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "event");
     }

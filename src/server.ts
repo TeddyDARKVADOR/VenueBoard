@@ -1,8 +1,10 @@
 import fastifyCookie from "@fastify/cookie";
+import { addHours } from "date-fns";
 import dotenv from "dotenv";
 import Fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
+  hasZodFastifySchemaValidationErrors,
   serializerCompiler,
   validatorCompiler,
 } from "fastify-type-provider-zod";
@@ -12,13 +14,13 @@ import { Repository } from "./db.js";
 import {
   type ActivityWithoutId,
   type EventWithoutId,
-  type Id,
+  type ObjectId,
   type PartialActivityWithoutId,
   type PartialEventWithoutId,
   type UserProfile,
   ZActivityWithoutId,
   ZEventWithoutId,
-  ZId,
+  ZObjectId,
   ZPartialEventWithoutId,
 } from "./models.js";
 import { TokenManager } from "./token_manager.js";
@@ -36,12 +38,8 @@ function start_web_server() {
   // ----- Error Handler -----
 
   web_server.setErrorHandler(async (error, _, reply) => {
-    // to catch zod validation errors if fastify format them
-    if (error.code === "FST_ERR_VALIDATION") {
-      return error;
-    }
-    if (error instanceof z.ZodError) {
-      return error;
+    if (hasZodFastifySchemaValidationErrors(error)) {
+      return error.message;
     }
     // to catch JWT errors
     if (
@@ -54,7 +52,7 @@ function start_web_server() {
         error.code === "ERR_JWT_EXPIRED")
     ) {
       reply.code(401);
-      return error;
+      return error.message;
     }
     // to catch Postgres errors
     if (
@@ -78,14 +76,11 @@ function start_web_server() {
       reply.code(error.code);
       if (error.table) {
         return {
-          subject: error.subject,
           table: error.table,
           message: error.message,
-          statusCode: error.code,
         };
       }
       return {
-        subject: error.subject,
         message: error.message,
         statusCode: error.code,
       };
@@ -113,9 +108,13 @@ function start_web_server() {
     res.setCookie("access_token", tok, {
       secure: true,
       sameSite: false,
-      //expires: addMinutes(new Date(), 1),
+      expires: addHours(new Date(), 1),
     });
     res.status(204);
+  });
+
+  web_server.get("/claims", async (req) => {
+    return await tokenManager.verifyAll(req.cookies.access_token);
   });
 
   web_server.get<{
@@ -130,10 +129,7 @@ function start_web_server() {
       },
     },
     async (req) => {
-      const payload = await tokenManager.verify(req.cookies.access_token, [
-        req.params.role_allowed,
-      ]);
-      return { payload };
+      return await tokenManager.verifyAll(req.cookies.access_token);
     },
   );
 
@@ -148,9 +144,9 @@ function start_web_server() {
     },
   );
 
-  web_server.get<{ Params: Id }>(
+  web_server.get<{ Params: ObjectId }>(
     "/events/:id",
-    { schema: { params: ZId } },
+    { schema: { params: ZObjectId } },
     async (req) => {
       return await repo.readEventById(req.params);
     },
@@ -160,17 +156,17 @@ function start_web_server() {
     return await repo.readAllEvents();
   });
 
-  web_server.get<{ Params: Id }>(
-    "/events/:id/activities",
-    { schema: { params: ZId } },
+  web_server.get<{ Params: ObjectId }>(
+    "/event_with_activities/:id",
+    { schema: { params: ZObjectId } },
     async (req) => {
       return await repo.readEventWithActivitiesByEventId(req.params);
     },
   );
 
-  web_server.put<{ Params: Id; Body: PartialEventWithoutId }>(
+  web_server.put<{ Params: ObjectId; Body: PartialEventWithoutId }>(
     "/events/:id",
-    { schema: { params: ZId, body: ZPartialEventWithoutId } },
+    { schema: { params: ZObjectId, body: ZPartialEventWithoutId } },
     async (req) => {
       if (!req.body) {
         throw new CustomError("REQUEST", 400, "Missing body", "event");
@@ -180,9 +176,9 @@ function start_web_server() {
     },
   );
 
-  web_server.delete<{ Params: Id }>(
+  web_server.delete<{ Params: ObjectId }>(
     "/events/:id",
-    { schema: { params: ZId } },
+    { schema: { params: ZObjectId } },
     async (req) => {
       await repo.deleteEventById(req.params);
       return { message: "deleted" };
@@ -204,15 +200,23 @@ function start_web_server() {
     return await repo.readAllActivities();
   });
 
-  web_server.get<{ Params: Id }>(
+  web_server.get<{ Params: ObjectId }>(
     "/activities/:id",
-    { schema: { params: ZId } },
+    { schema: { params: ZObjectId } },
     async (req) => {
       return await repo.readActivityById(req.params);
     },
   );
 
-  web_server.put<{ Params: Id; Body: PartialActivityWithoutId }>(
+  web_server.get<{ Params: ObjectId }>(
+    "/activity_with_event/:id",
+    { schema: { params: ZObjectId } },
+    async (req) => {
+      return await repo.readActivityWithEventByActivityId(req.params);
+    },
+  );
+
+  web_server.put<{ Params: ObjectId; Body: PartialActivityWithoutId }>(
     "/activities/:id",
     async (req) => {
       if (!req.body) {
@@ -223,7 +227,7 @@ function start_web_server() {
     },
   );
 
-  web_server.delete<{ Params: Id }>("/activities/:id", async (req) => {
+  web_server.delete<{ Params: ObjectId }>("/activities/:id", async (req) => {
     await repo.deleteActivityById(req.params);
     return { message: "deleted" };
   });

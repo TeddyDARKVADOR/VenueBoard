@@ -34,43 +34,48 @@ export class TokenManager {
       const now = Math.floor(Date.now() / 1000);
       signer.setIssuedAt(now).setExpirationTime(now + 60);
     } else {
-      signer.setIssuedAt().setExpirationTime("1m");
+      signer.setIssuedAt().setExpirationTime("1h");
     }
     return await signer.sign(this.secret);
   }
 
-  async verify(
+  async verify(encoded_token: string): Promise<JwtClaims> {
+    const { payload } = await jwtVerify(encoded_token, this.secret, {
+      algorithms: ["HS256"],
+    });
+    if (!this.isJwtClaims(payload)) {
+      throw new Error("Invalid token claims");
+    }
+    return payload;
+  }
+
+  async verifyAll(
     encoded_token: string | undefined,
     roles_allowed?: UserProfile["user_profile_role"][],
   ): Promise<JwtClaims> {
     if (!encoded_token) {
       throw new CustomError("REQUEST", 401, "No token given");
     }
-    const { payload } = await jwtVerify(encoded_token, this.secret, {
-      algorithms: ["HS256"],
-    });
-    if (!this.isJwtClaims(payload)) {
-      throw new Error("Invalid token payload");
-    }
-    console.log(roles_allowed);
-    console.log(payload.roles);
+    const claims = await this.verify(encoded_token);
     if (roles_allowed) {
-      for (const role of payload.roles) {
+      for (const role of claims.roles) {
         if (roles_allowed.find((curr) => curr === role)) {
-          return payload;
+          return claims;
         }
       }
+    } else {
+      return claims;
     }
     throw new CustomError("REQUEST", 403, "Valid token but forbidden");
   }
 
-  private isJwtClaims(payload: JWTPayload): payload is JwtClaims {
+  private isJwtClaims(claims: JWTPayload): claims is JwtClaims {
     return (
-      typeof payload.sub === "string" &&
-      Array.isArray(payload.roles) &&
-      payload.roles.every((role) => typeof role === "string") &&
-      typeof payload.iat === "number" &&
-      typeof payload.exp === "number"
+      typeof claims.sub === "string" &&
+      Array.isArray(claims.roles) &&
+      claims.roles.every((role) => typeof role === "string") &&
+      typeof claims.iat === "number" &&
+      typeof claims.exp === "number"
     );
   }
 }
