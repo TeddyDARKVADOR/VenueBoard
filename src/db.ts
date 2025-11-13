@@ -1,4 +1,5 @@
 import argon2 from "argon2";
+import crypto from "crypto";
 import postgres from "postgres";
 import { CustomError } from "./custom_error.js";
 import type {
@@ -29,8 +30,8 @@ import type {
 
 const ARGON2OPTS = {
   type: argon2.argon2id,
-  memoryCost: 2 ** 16,
-  timeCost: 3,
+  memoryCost: 19456,
+  timeCost: 2,
   parallelism: 1,
   hashLength: 32,
 };
@@ -52,7 +53,11 @@ export class Repository {
   // ----- UserAuth -----
 
   async createUserAuth(newUserAuth: UserAuthWithoutId) {
-    const hash = await argon2.hash(newUserAuth.user_auth_password, ARGON2OPTS);
+    const password = this.normalizePassword(newUserAuth.user_auth_password);
+    const peppered = process.env.PEPPER
+      ? this.applyPepper(password, process.env.PEPPER)
+      : password;
+    const hash = await argon2.hash(peppered, ARGON2OPTS);
     const rows = (await this.sql`
     INSERT INTO user_auth
     (user_auth_login, user_auth_password, user_profile_id)
@@ -126,6 +131,21 @@ export class Repository {
     }
     const storedHash = rows[0].user_auth_password;
     return await argon2.verify(storedHash, user.user_auth_password);
+  }
+
+  private normalizePassword(password: string) {
+    const MAX = 1024;
+    const normalized = password.normalize("NFKC");
+    if (normalized.length === 0 || normalized.length > MAX)
+      throw new Error("Invalid password length");
+    return normalized;
+  }
+
+  private applyPepper(normalized: string, pepperKey: string) {
+    return crypto
+      .createHmac("sha384", pepperKey)
+      .update(normalized, "utf8")
+      .digest("base64");
   }
 
   // ----- UserProfile -----
@@ -663,11 +683,11 @@ export class Repository {
   async readActivityWithEventByActivityId({ id }: ObjectId) {
     const rows = await this.sql`
      SELECT
-      activity.*,
-      row_to_json(event) AS event
-    FROM activity
-    LEFT JOIN event ON activity.event_id = event.event_id
-    WHERE activity.activity_id = ${id}`;
+  activity.*,
+  row_to_json(event) AS event
+FROM activity
+LEFT JOIN event ON activity.event_id = event.event_id
+WHERE activity.activity_id = ${id}`;
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "event");
     }

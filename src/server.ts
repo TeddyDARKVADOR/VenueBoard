@@ -1,4 +1,5 @@
 import fastifyCookie from "@fastify/cookie";
+import cors from "@fastify/cors";
 import { addHours } from "date-fns";
 import dotenv from "dotenv";
 import Fastify from "fastify";
@@ -39,6 +40,12 @@ function start_web_server() {
   web_server.setValidatorCompiler(validatorCompiler);
   web_server.setSerializerCompiler(serializerCompiler);
   web_server.register(fastifyCookie, {});
+  web_server.register(cors, {
+    origin: "http://localhost:1234",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+  });
 
   // ----- Error Handler -----
 
