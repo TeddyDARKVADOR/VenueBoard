@@ -1,6 +1,11 @@
 import { type JWTPayload, jwtVerify, SignJWT } from "jose";
 import { CustomError } from "./custom_error.js";
-import type { CreateJwtOptions, JwtClaims, UserProfile } from "./models.js";
+import {
+  type CreateJwtOptions,
+  type JwtClaims,
+  type UserProfile,
+  ZJwtClaims,
+} from "./models.js";
 
 export class TokenManager {
   secret: Uint8Array;
@@ -21,10 +26,10 @@ export class TokenManager {
   }
 
   async encode(
-    { sub, roles }: CreateJwtOptions,
+    { sub, role }: CreateJwtOptions,
     testing: boolean,
   ): Promise<string> {
-    const signer = new SignJWT({ roles })
+    const signer = new SignJWT({ role })
       .setProtectedHeader({
         alg: "HS256",
         typ: "JWT",
@@ -44,7 +49,7 @@ export class TokenManager {
       algorithms: ["HS256"],
     });
     if (!this.isJwtClaims(payload)) {
-      throw new Error("Invalid token claims");
+      throw new CustomError("TOKEN", 401, "Invalid token claims");
     }
     return payload;
   }
@@ -58,10 +63,8 @@ export class TokenManager {
     }
     const claims = await this.verify(encoded_token);
     if (roles_allowed) {
-      for (const role of claims.roles) {
-        if (roles_allowed.find((curr) => curr === role)) {
-          return claims;
-        }
+      if (roles_allowed.find((curr) => curr === claims.role)) {
+        return claims;
       }
     } else {
       return claims;
@@ -70,13 +73,7 @@ export class TokenManager {
   }
 
   private isJwtClaims(claims: JWTPayload): claims is JwtClaims {
-    return (
-      typeof claims.sub === "string" &&
-      Array.isArray(claims.roles) &&
-      claims.roles.every((role) => typeof role === "string") &&
-      typeof claims.iat === "number" &&
-      typeof claims.exp === "number"
-    );
+    return ZJwtClaims.safeParse(claims).success;
   }
 }
 

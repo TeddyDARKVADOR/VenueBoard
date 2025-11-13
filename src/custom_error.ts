@@ -1,6 +1,6 @@
 export class CustomError extends Error {
   constructor(
-    public subject: "POSTGRES" | "REQUEST" | "LOGIC",
+    public subject: "POSTGRES" | "REQUEST" | "LOGIC" | "TOKEN",
     public code: number,
     public message: string,
     public table?:

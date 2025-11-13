@@ -123,11 +123,12 @@ export const ZEventWithActivities = ZEvent.extend({
 
 export type EventWithActivities = z.infer<typeof ZEventWithActivities>;
 
-export type JwtClaims = {
-  sub: string;
-  roles: UserProfile["user_profile_role"][];
-  iat: number;
-  exp: number;
-};
+export const ZJwtClaims = z.object({
+  sub: z.string(),
+  role: ZUserProfile.shape.user_profile_role,
+  iat: z.number(),
+  exp: z.number(),
+});
 
+export type JwtClaims = z.infer<typeof ZJwtClaims>;
 export type CreateJwtOptions = Omit<JwtClaims, "iat" | "exp">;

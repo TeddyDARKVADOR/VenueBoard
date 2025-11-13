@@ -101,7 +101,7 @@ function start_web_server() {
     const tok = await tokenManager.encode(
       {
         sub: "example",
-        roles: ["admin"],
+        role: "admin",
       },
       false,
     );
