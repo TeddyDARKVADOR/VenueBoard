@@ -1,3 +1,4 @@
+import type { FastifyRequest } from "fastify/types/request.js";
 import { type JWTPayload, jwtVerify, SignJWT } from "jose";
 import { CustomError } from "./custom_error.js";
 import {
@@ -54,26 +55,8 @@ export class TokenManager {
     return payload;
   }
 
-  async verifyAll(
-    encoded_token: string | undefined,
-    roles_allowed?: UserProfile["user_profile_role"][],
-  ): Promise<JwtClaims> {
-    if (!encoded_token) {
-      throw new CustomError("REQUEST", 401, "No token given");
-    }
-    const claims = await this.verify(encoded_token);
-    if (roles_allowed) {
-      if (roles_allowed.find((curr) => curr === claims.role)) {
-        return claims;
-      }
-    } else {
-      return claims;
-    }
-    throw new CustomError("REQUEST", 403, "Valid token but forbidden");
-  }
-
-  private isJwtClaims(claims: JWTPayload): claims is JwtClaims {
-    return ZJwtClaims.safeParse(claims).success;
+  private isJwtClaims(payload: JWTPayload): payload is JwtClaims {
+    return ZJwtClaims.safeParse(payload).success;
   }
 }
 
@@ -87,4 +70,25 @@ function fromBase64url(source: string): Uint8Array {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+export function requireRoles(
+  roles: UserProfile["user_profile_role"][],
+): (req: FastifyRequest) => void {
+  return (req: FastifyRequest) => {
+    console.log("dans le require");
+    if (roles.length === 0) {
+      return;
+    }
+    console.log("1");
+    if (!req.claims) {
+      throw new CustomError("TOKEN", 401, "unauthorized");
+    }
+    console.log("2");
+    if (!roles.find((curr) => curr === req.claims?.role)) {
+      throw new CustomError("REQUEST", 403, "forbidden");
+    }
+    console.log("3");
+    return;
+  };
 }

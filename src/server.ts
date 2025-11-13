@@ -8,24 +8,29 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from "fastify-type-provider-zod";
-import z from "zod";
 import { CustomError } from "./custom_error.js";
 import { Repository } from "./db.js";
 import {
   type ActivityWithoutId,
   type EventWithoutId,
+  type JwtClaims,
   type ObjectId,
   type PartialActivityWithoutId,
   type PartialEventWithoutId,
-  type UserProfile,
   ZActivityWithoutId,
   ZEventWithoutId,
   ZObjectId,
   ZPartialEventWithoutId,
 } from "./models.js";
-import { TokenManager } from "./token_manager.js";
+import { requireRoles, TokenManager } from "./token_manager.js";
 
 dotenv.config();
+
+declare module "fastify" {
+  interface FastifyRequest {
+    claims: JwtClaims | null;
+  }
+}
 
 function start_web_server() {
   const web_server = Fastify({
@@ -95,6 +100,15 @@ function start_web_server() {
   const repo = new Repository();
   const tokenManager = new TokenManager();
 
+  // ----- Hooks -----
+
+  web_server.addHook("preHandler", async (req) => {
+    req.claims = req.cookies.access_token
+      ? await tokenManager.verify(req.cookies.access_token)
+      : null;
+    console.log("after prehandler hook");
+  });
+
   // ----- Token -----
 
   web_server.get("/token", async (_req, res) => {
@@ -114,24 +128,8 @@ function start_web_server() {
   });
 
   web_server.get("/claims", async (req) => {
-    return await tokenManager.verifyAll(req.cookies.access_token);
+    return req.claims;
   });
-
-  web_server.get<{
-    Params: { role_allowed: UserProfile["user_profile_role"] };
-  }>(
-    "/token_check/:role_allowed",
-    {
-      schema: {
-        params: z.object({
-          role_allowed: z.enum(["admin", "staff", "speaker", "guest"]),
-        }),
-      },
-    },
-    async (req) => {
-      return await tokenManager.verifyAll(req.cookies.access_token);
-    },
-  );
 
   // ----- Event routes -----
 
@@ -146,8 +144,9 @@ function start_web_server() {
 
   web_server.get<{ Params: ObjectId }>(
     "/events/:id",
-    { schema: { params: ZObjectId } },
+    { schema: { params: ZObjectId }, preHandler: requireRoles(["admin"]) },
     async (req) => {
+      console.log("dans le handler");
       return await repo.readEventById(req.params);
     },
   );
