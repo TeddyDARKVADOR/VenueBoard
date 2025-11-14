@@ -15,6 +15,9 @@ export const ZUserAuth = z.object({
   user_profile_id: ZId,
 });
 export const ZUserAuthWithoutId = ZUserAuth.omit({ user_auth_id: true });
+export const ZUserAuthLogin = ZUserAuthWithoutId.omit({
+  user_profile_id: true,
+});
 export const ZUserAuthWithoutPassword = ZUserAuth.omit({
   user_auth_password: true,
 });
@@ -22,6 +25,7 @@ export const ZPartialUserAuthWithoutId = ZUserAuthWithoutId.partial();
 
 export type UserAuth = z.infer<typeof ZUserAuth>;
 export type UserAuthWithoutId = z.infer<typeof ZUserAuthWithoutId>;
+export type UserAuthLogin = z.infer<typeof ZUserAuthLogin>;
 export type PartialUserAuthWithoutId = z.infer<
   typeof ZPartialUserAuthWithoutId
 >;
@@ -130,7 +134,7 @@ export const ZActivityWithEvent = ZActivity.extend({
 export type ActivityWithEvent = z.infer<typeof ZActivityWithEvent>;
 
 export const ZJwtClaims = z.object({
-  sub: z.string(),
+  sub: ZId,
   role: ZUserProfile.shape.user_profile_role,
   iat: z.number(),
   exp: z.number(),
@@ -138,3 +142,21 @@ export const ZJwtClaims = z.object({
 
 export type JwtClaims = z.infer<typeof ZJwtClaims>;
 export type CreateJwtOptions = Omit<JwtClaims, "iat" | "exp">;
+
+export enum HttpStatus {
+  OK = 200,
+  CREATED = 201,
+  NO_CONTENT = 204,
+  /** invalid parameters or malformed syntax */
+  BAD_REQUEST = 400,
+  /** authentication required or invalid credentials */
+  UNAUTHORIZED = 401,
+  /** authenticated but lacking necessary permissions */
+  FORBIDDEN = 403,
+  /** Not found */
+  NOT_FOUND = 404,
+  /** conflit - logic error */
+  CONFLICT = 409,
+  /** Internal server error */
+  INTERNAL_SERVER_ERROR = 500,
+}

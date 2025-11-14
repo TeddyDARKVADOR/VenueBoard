@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import postgres from "postgres";
 import { CustomError } from "./custom_error.js";
 import type * as model from "./models.js";
+import { HttpStatus } from "./models.js";
 
 const ARGON2OPTS = {
   type: argon2.argon2id,
@@ -52,7 +53,12 @@ export class Repository {
       FROM user_auth
       WHERE user_auth_id = ${id}`) as model.UserAuthWithoutPassword[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "user_auth",
+      );
     }
     return rows[0];
   }
@@ -79,7 +85,12 @@ export class Repository {
       WHERE user_auth_id = ${id}
       RETURNING user_auth_id, user_auth_login`) as model.UserAuthWithoutPassword[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "user_auth",
+      );
     }
     return rows[0];
   }
@@ -90,28 +101,45 @@ export class Repository {
       WHERE user_auth_id = ${id}
       RETURNING user_auth_id, user_auth_login`) as model.UserAuthWithoutPassword[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "user_auth",
+      );
     }
     return rows[0];
   }
 
-  async loginUserAuth(user: model.UserAuthWithoutId) {
+  async loginUserAuth(user: model.UserAuthLogin) {
     const rows = (await this.sql`
-      SELECT user_auth_password
+      SELECT user_auth_password, user_profile_id
       FROM user_auth
       WHERE user_auth_login = ${user.user_auth_login}
-    `) as { user_auth_password: string }[];
+    `) as { user_auth_password: string; user_profile_id: number }[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "user_auth",
+      );
     }
-    const storedHash = rows[0].user_auth_password;
-    return await argon2.verify(storedHash, user.user_auth_password);
+    const password = this.normalizePassword(rows[0].user_auth_password);
+    if (await argon2.verify(password, user.user_auth_password)) {
+      return rows[0].user_profile_id;
+    }
+    return null;
   }
 
   private normalizePassword(password: string) {
     const normalized = password.normalize("NFKC");
     if (normalized.length < 1 || normalized.length > 1024) {
-      throw new CustomError("LOGIC", 409, "invalid password length");
+      throw new CustomError(
+        "LOGIC",
+        HttpStatus.CONFLICT,
+        "invalid password length",
+      );
     }
     return normalized;
   }
@@ -124,7 +152,7 @@ export class Repository {
       (user_profile_name, user_profile_role)
       VALUES
       (${newUserProfile.user_profile_name},
-      ${newUserProfile.user_profile_role},
+      ${newUserProfile.user_profile_role})
       RETURNING *`) as model.UserProfile[];
     return rows[0];
   }
@@ -142,7 +170,12 @@ export class Repository {
       FROM user_profile
       WHERE user_profile_id = ${id}`) as model.UserProfile[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "user_profile",
+      );
     }
     return rows[0];
   }
@@ -161,7 +194,12 @@ export class Repository {
       WHERE user_profile_id = ${id}
       RETURNING *`) as model.UserProfile[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "user_profile",
+      );
     }
     return rows[0];
   }
@@ -172,7 +210,12 @@ export class Repository {
       WHERE user_profile_id = ${id}
       RETURNING *`;
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "user_profile",
+      );
     }
     return rows[0];
   }
@@ -202,7 +245,12 @@ export class Repository {
     FROM register
     WHERE register_id = ${id}`) as model.Register[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "register");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "register",
+      );
     }
     return rows[0];
   }
@@ -221,7 +269,12 @@ export class Repository {
     WHERE register_id = ${id}
     RETURNING *`) as model.Register[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "register");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "register",
+      );
     }
     return rows[0];
   }
@@ -232,7 +285,12 @@ export class Repository {
     WHERE register_id = ${id}
     RETURNING *`) as model.Register[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "register");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "register",
+      );
     }
     return rows[0];
   }
@@ -243,7 +301,7 @@ export class Repository {
     if (newEvent.event_start >= newEvent.event_end) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         "Event end needs to be older than its start",
         "event",
       );
@@ -274,7 +332,12 @@ export class Repository {
       FROM event
       WHERE event_id = ${id}`) as model.Event[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "event");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "event",
+      );
     }
     return rows[0];
   }
@@ -295,7 +358,7 @@ export class Repository {
 
     const error = new CustomError(
       "LOGIC",
-      409,
+      HttpStatus.CONFLICT,
       "Event end needs to be older than its start",
       "event",
     );
@@ -326,7 +389,12 @@ export class Repository {
       WHERE event_id = ${id}
       RETURNING *`) as model.Event[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "event");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "event",
+      );
     }
     return rows[0];
   }
@@ -337,7 +405,12 @@ export class Repository {
       WHERE event_id = ${id}
       RETURNING *`) as model.Event[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "event");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "event",
+      );
     }
     return rows[0];
   }
@@ -348,7 +421,7 @@ export class Repository {
     if (newActivity.activity_start >= newActivity.activity_end) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         "Activity end needs to be older than its start",
         "activity",
       );
@@ -360,7 +433,7 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         "Activity real end needs to be older than its real start",
         "activity",
       );
@@ -374,7 +447,7 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         "Activity's end and start needs to be between his event's dates",
         "activity",
       );
@@ -409,7 +482,12 @@ export class Repository {
       FROM activity
       WHERE activity_id = ${id}`) as model.Activity[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "activity");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "activity",
+      );
     }
     return rows[0];
   }
@@ -438,7 +516,7 @@ export class Repository {
     if (start && end && start >= end) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         "Activity end needs to be older than its start",
         "activity",
       );
@@ -446,7 +524,7 @@ export class Repository {
     if (realStart && realEnd && realStart >= realEnd) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         "Activity real end needs to be older than its real start",
         "activity",
       );
@@ -458,7 +536,7 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         `Activity's ${start ? "start" : "end"} needs to be ${start ? "before activity end" : "after activity start"}`,
         "activity",
       );
@@ -475,7 +553,7 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         `Activity's real ${realStart ? "start" : "end"} needs to be ${realStart ? "before activity real end" : "after activity  real start"}`,
         "activity",
       );
@@ -489,7 +567,7 @@ export class Repository {
     ) {
       throw new CustomError(
         "LOGIC",
-        409,
+        HttpStatus.CONFLICT,
         "Activity's end and start needs to be between his event's dates",
         "activity",
       );
@@ -509,7 +587,12 @@ export class Repository {
       WHERE activity_id = ${id}
       RETURNING *`) as model.Activity[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "activity");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "activity",
+      );
     }
     return rows[0];
   }
@@ -520,7 +603,12 @@ export class Repository {
       WHERE activity_id = ${id}
       RETURNING *`) as model.Activity[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "activity");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "activity",
+      );
     }
     return rows[0];
   }
@@ -548,7 +636,12 @@ export class Repository {
     SELECT * FROM room
     WHERE room_id = ${id}`) as model.Room[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "room");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "room",
+      );
     }
     return rows[0];
   }
@@ -569,7 +662,12 @@ export class Repository {
     WHERE room_id = ${id}
     RETURNING *`) as model.Room[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "room");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "room",
+      );
     }
     return rows[0];
   }
@@ -580,7 +678,12 @@ export class Repository {
     WHERE room_id = ${id}
     RETURNING *`) as model.Room[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "room");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "room",
+      );
     }
     return rows[0];
   }
@@ -608,7 +711,12 @@ export class Repository {
     SELECT * FROM run
     WHERE run_id = ${id}`) as model.Run[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "run");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "run",
+      );
     }
     return rows[0];
   }
@@ -624,7 +732,12 @@ export class Repository {
     WHERE run_id = ${id}
     RETURNING *`) as model.Run[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "run");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "run",
+      );
     }
     return rows[0];
   }
@@ -635,7 +748,12 @@ export class Repository {
     WHERE run_id = ${id}
     RETURNING *`) as model.Run[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "run");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "run",
+      );
     }
     return rows[0];
   }
@@ -652,7 +770,12 @@ export class Repository {
     WHERE event.event_id = ${id}
     GROUP BY event.event_id`) as model.EventWithActivities[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "event");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "event",
+      );
     }
     return rows[0];
   }
@@ -666,7 +789,12 @@ FROM activity
 LEFT JOIN event ON activity.event_id = event.event_id
 WHERE activity.activity_id = ${id}`) as model.ActivityWithEvent[];
     if (rows.length === 0) {
-      throw new CustomError("POSTGRES", 404, "Not found", "event");
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "event",
+      );
     }
     return rows[0];
   }

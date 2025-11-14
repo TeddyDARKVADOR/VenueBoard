@@ -14,16 +14,28 @@ import { Repository } from "./db.js";
 import {
   type ActivityWithoutId,
   type EventWithoutId,
+  HttpStatus,
   type JwtClaims,
   type ObjectId,
   type PartialActivityWithoutId,
   type PartialEventWithoutId,
+  type PartialUserAuthWithoutId,
+  type PartialUserProfileWithoutId,
+  type UserAuthLogin,
+  type UserAuthWithoutId,
+  type UserProfileWithoutId,
   ZActivityWithoutId,
   ZEventWithoutId,
   ZObjectId,
+  ZPartialActivityWithoutId,
   ZPartialEventWithoutId,
+  ZPartialUserAuthWithoutId,
+  ZPartialUserProfileWithoutId,
+  ZUserAuthLogin,
+  ZUserAuthWithoutId,
+  ZUserProfileWithoutId,
 } from "./models.js";
-import { requireRoles, TokenManager } from "./token_manager.js";
+import { requireRoles, sameId, TokenManager } from "./token_manager.js";
 
 dotenv.config();
 
@@ -51,7 +63,8 @@ function start_web_server() {
 
   web_server.setErrorHandler(async (error, _req, reply) => {
     if (hasZodFastifySchemaValidationErrors(error)) {
-      return error.message;
+      reply.code(400);
+      return { message: error.message };
     }
     // to catch JWT errors
     if (
@@ -85,7 +98,7 @@ function start_web_server() {
       return error;
     }
     if (error instanceof CustomError) {
-      reply.code(error.code);
+      reply.code(error.status);
       if (error.table) {
         return {
           table: error.table,
@@ -109,7 +122,22 @@ function start_web_server() {
   // ----- Hooks -----
 
   web_server.addHook("preHandler", async (req) => {
-    if (req.originalUrl === "/token" || req.originalUrl === "/login") {
+    if (req.method === "PUT" || req.method === "POST") {
+      if (!req.body) {
+        throw new CustomError(
+          "REQUEST",
+          HttpStatus.BAD_REQUEST,
+          "Missing body",
+        );
+      }
+    }
+    if (
+      req.originalUrl === "/login" ||
+      (req.method === "POST" &&
+        (req.originalUrl === "/user_auths" ||
+          req.originalUrl === "/user_profiles")) ||
+      req.originalUrl === "/token"
+    ) {
       req.claims = null;
       return;
     }
@@ -123,8 +151,8 @@ function start_web_server() {
   web_server.get("/token", async (_req, res) => {
     const tok = await tokenManager.encode(
       {
-        sub: "example",
-        role: "admin",
+        sub: 1,
+        role: "guest",
       },
       false,
     );
@@ -144,7 +172,7 @@ function start_web_server() {
 
   web_server.post<{ Body: EventWithoutId }>(
     "/events",
-    { schema: { body: ZEventWithoutId } },
+    { schema: { body: ZEventWithoutId }, preHandler: requireRoles(["staff"]) },
     async (req) => {
       const event = await repo.createEvent(req.body);
       return { event_id: event.event_id, message: "created" };
@@ -153,10 +181,7 @@ function start_web_server() {
 
   web_server.get<{ Params: ObjectId }>(
     "/events/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "guest"]),
-    },
+    { schema: { params: ZObjectId } },
     async (req) => {
       return await repo.readEventById(req.params);
     },
@@ -176,11 +201,11 @@ function start_web_server() {
 
   web_server.put<{ Params: ObjectId; Body: PartialEventWithoutId }>(
     "/events/:id",
-    { schema: { params: ZObjectId, body: ZPartialEventWithoutId } },
+    {
+      schema: { params: ZObjectId, body: ZPartialEventWithoutId },
+      preHandler: requireRoles(["staff"]),
+    },
     async (req) => {
-      if (!req.body) {
-        throw new CustomError("REQUEST", 400, "Missing body", "event");
-      }
       const event = await repo.updateEventById(req.params, req.body);
       return { event_id: event.event_id, message: "updated" };
     },
@@ -188,7 +213,7 @@ function start_web_server() {
 
   web_server.delete<{ Params: ObjectId }>(
     "/events/:id",
-    { schema: { params: ZObjectId } },
+    { schema: { params: ZObjectId }, preHandler: requireRoles(["staff"]) },
     async (req) => {
       await repo.deleteEventById(req.params);
       return { message: "deleted" };
@@ -199,7 +224,10 @@ function start_web_server() {
 
   web_server.post<{ Body: ActivityWithoutId }>(
     "/activities",
-    { schema: { body: ZActivityWithoutId } },
+    {
+      schema: { body: ZActivityWithoutId },
+      preHandler: requireRoles(["staff"]),
+    },
     async (req) => {
       const activity = await repo.createActivity(req.body);
       return { activity_id: activity.activity_id, message: "created" };
@@ -228,19 +256,178 @@ function start_web_server() {
 
   web_server.put<{ Params: ObjectId; Body: PartialActivityWithoutId }>(
     "/activities/:id",
+    {
+      schema: { params: ZObjectId, body: ZPartialActivityWithoutId },
+      preHandler: requireRoles(["staff"]),
+    },
     async (req) => {
-      if (!req.body) {
-        throw new CustomError("REQUEST", 400, "Missing body", "activity");
-      }
       const activity = await repo.updateActivityById(req.params, req.body);
       return { activity_id: activity.activity_id, message: "updated" };
     },
   );
 
-  web_server.delete<{ Params: ObjectId }>("/activities/:id", async (req) => {
-    await repo.deleteActivityById(req.params);
-    return { message: "deleted" };
+  web_server.delete<{ Params: ObjectId }>(
+    "/activities/:id",
+    { schema: { params: ZObjectId }, preHandler: requireRoles(["staff"]) },
+    async (req) => {
+      await repo.deleteActivityById(req.params);
+      return { message: "deleted" };
+    },
+  );
+
+  // ----- UserProfile routes -----
+
+  web_server.post<{ Body: UserProfileWithoutId }>(
+    "/user_profiles",
+    { schema: { body: ZUserProfileWithoutId } },
+    async (req) => {
+      const user_profile = await repo.createUserProfile(req.body);
+      return {
+        user_profile_id: user_profile.user_profile_id,
+        message: "created",
+      };
+    },
+  );
+
+  web_server.get<{ Params: ObjectId }>(
+    "/user_profiles/:id",
+    { schema: { params: ZObjectId } },
+    async (req) => {
+      return await repo.readUserProfileById(req.params);
+    },
+  );
+
+  web_server.get("/user_profiles", async () => {
+    return await repo.readAllUserProfile();
   });
+
+  web_server.put<{ Params: ObjectId; Body: PartialUserProfileWithoutId }>(
+    "/user_profiles/:id",
+    {
+      schema: { params: ZObjectId, body: ZPartialUserProfileWithoutId },
+      preHandler: [
+        requireRoles(["guest", "speaker", "staff"]),
+        sameId("/user_profiles/"),
+      ],
+    },
+    async (req) => {
+      const user_profile = await repo.updateUserProfileById(
+        req.params,
+        req.body,
+      );
+      return {
+        user_profile_id: user_profile.user_profile_id,
+        message: "updated",
+      };
+    },
+  );
+
+  web_server.delete<{ Params: ObjectId }>(
+    "/user_profiles/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: [
+        requireRoles(["guest", "speaker", "staff"]),
+        sameId("/user_profiles/"),
+      ],
+    },
+    async (req) => {
+      await repo.deleteUserProfileById(req.params);
+      return { message: "deleted" };
+    },
+  );
+
+  // ----- UserAuth routes -----
+
+  web_server.post<{ Body: UserAuthLogin }>(
+    "/login",
+    { schema: { body: ZUserAuthLogin } },
+    async (req, res) => {
+      const user_profile_id = await repo.loginUserAuth(req.body);
+      if (!user_profile_id) {
+        throw new CustomError(
+          "LOGIC",
+          HttpStatus.UNAUTHORIZED,
+          "wrong login or password",
+        );
+      }
+      const user_profile_role = (
+        await repo.readUserProfileById({
+          id: user_profile_id,
+        })
+      ).user_profile_role;
+      const token = await tokenManager.encode(
+        {
+          sub: user_profile_id,
+          role: user_profile_role,
+        },
+        false,
+      );
+      res.setCookie("access_token", token, {
+        secure: true,
+        sameSite: false,
+        expires: addHours(new Date(), 1),
+      });
+      res.status(204);
+    },
+  );
+
+  web_server.post<{ Body: UserAuthWithoutId }>(
+    "/user_auths",
+    { schema: { body: ZUserAuthWithoutId } },
+    async (req) => {
+      const user_auth = await repo.createUserAuth(req.body);
+      return { user_auth_id: user_auth.user_auth_id, message: "created" };
+    },
+  );
+
+  web_server.get("/user_auths", { preHandler: requireRoles([]) }, async () => {
+    return await repo.readAllUserAuth();
+  });
+
+  web_server.get<{ Params: ObjectId }>(
+    "/user_auths/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: [
+        requireRoles(["guest", "speaker", "staff"]),
+        sameId("/user_auths/"),
+      ],
+    },
+    async (req) => {
+      return await repo.readUserAuthById(req.params);
+    },
+  );
+
+  web_server.put<{ Params: ObjectId; Body: PartialUserAuthWithoutId }>(
+    "/user_auths/:id",
+    {
+      schema: { params: ZObjectId, body: ZPartialUserAuthWithoutId },
+      preHandler: [
+        requireRoles(["guest", "speaker", "staff"]),
+        sameId("/user_auths/"),
+      ],
+    },
+    async (req) => {
+      const user_auth = await repo.updateUserAuthById(req.params, req.body);
+      return { user_auth_id: user_auth.user_auth_id, message: "updated" };
+    },
+  );
+
+  web_server.delete<{ Params: ObjectId }>(
+    "/user_auths/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: [
+        requireRoles(["guest", "speaker", "staff"]),
+        sameId("/user_auths/"),
+      ],
+    },
+    async (req) => {
+      await repo.deleteUserAuthById(req.params);
+      return { message: "deleted" };
+    },
+  );
 
   // ----- Listen -----
 

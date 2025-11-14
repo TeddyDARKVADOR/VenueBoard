@@ -1,11 +1,11 @@
 import type { FastifyRequest } from "fastify/types/request.js";
-import { type JWTPayload, jwtVerify, SignJWT } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 import { CustomError } from "./custom_error.js";
 import {
   type CreateJwtOptions,
+  HttpStatus,
   type JwtClaims,
   type UserProfile,
-  ZJwtClaims,
 } from "./models.js";
 
 export class TokenManager {
@@ -35,7 +35,7 @@ export class TokenManager {
         alg: "HS256",
         typ: "JWT",
       })
-      .setSubject(sub);
+      .setSubject(String(sub));
     if (testing) {
       const now = Math.floor(Date.now() / 1000);
       signer.setIssuedAt(now).setExpirationTime(now + 60);
@@ -49,14 +49,12 @@ export class TokenManager {
     const { payload } = await jwtVerify(encoded_token, this.secret, {
       algorithms: ["HS256"],
     });
-    if (!this.isJwtClaims(payload)) {
-      throw new CustomError("TOKEN", 401, "Invalid token claims");
-    }
-    return payload;
-  }
-
-  private isJwtClaims(payload: JWTPayload): payload is JwtClaims {
-    return ZJwtClaims.safeParse(payload).success;
+    return {
+      sub: Number(payload.sub),
+      role: payload.role as JwtClaims["role"],
+      iat: Number(payload.iat),
+      exp: Number(payload.exp),
+    };
   }
 }
 
@@ -76,15 +74,33 @@ export function requireRoles(
   roles: UserProfile["user_profile_role"][],
 ): (req: FastifyRequest) => void {
   return async (req: FastifyRequest) => {
-    if (roles.length === 0) {
+    if (!req.claims) {
+      throw new CustomError("TOKEN", HttpStatus.UNAUTHORIZED, "unauthorized");
+    }
+    if (req.claims.role === "admin") {
       return;
     }
-    if (!req.claims) {
-      throw new CustomError("TOKEN", 401, "unauthorized");
-    }
     if (!roles.find((curr) => curr === req.claims?.role)) {
-      throw new CustomError("REQUEST", 403, "forbidden");
+      throw new CustomError("REQUEST", HttpStatus.FORBIDDEN, "forbidden");
     }
     return;
+  };
+}
+
+export function sameId(remove_from_url: string): (req: FastifyRequest) => void {
+  return async (req: FastifyRequest) => {
+    if (!req.claims) {
+      throw new CustomError("TOKEN", HttpStatus.UNAUTHORIZED, "unauthorized");
+    }
+    if (
+      req.claims.role !== "admin" &&
+      req.claims.sub !== Number(req.originalUrl.slice(remove_from_url.length))
+    ) {
+      throw new CustomError(
+        "REQUEST",
+        HttpStatus.CONFLICT,
+        "Id in the request and in the claims needs to be the same",
+      );
+    }
   };
 }

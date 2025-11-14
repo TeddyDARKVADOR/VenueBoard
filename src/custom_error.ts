@@ -1,7 +1,9 @@
+import type { HttpStatus } from "./models.js";
+
 export class CustomError extends Error {
   constructor(
     public subject: "POSTGRES" | "REQUEST" | "LOGIC" | "TOKEN",
-    public code: number,
+    public status: HttpStatus,
     public message: string,
     public table?:
       | "event"
