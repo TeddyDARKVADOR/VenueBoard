@@ -77,7 +77,7 @@ function start_web_server() {
       error.code === "ERR_JWKS_TIMEOUT"
     ) {
       reply.code(401);
-      return error.message;
+      return { error: error.message };
     }
     // to catch Postgres errors
     if (
@@ -95,7 +95,7 @@ function start_web_server() {
         default:
           reply.code(500);
       }
-      return error;
+      return { message: error.message };
     }
     if (error instanceof CustomError) {
       reply.code(error.status);
@@ -122,6 +122,7 @@ function start_web_server() {
   // ----- Hooks -----
 
   web_server.addHook("preHandler", async (req) => {
+    // method that needs a body
     if (req.method === "PUT" || req.method === "POST") {
       if (!req.body) {
         throw new CustomError(
@@ -131,16 +132,20 @@ function start_web_server() {
         );
       }
     }
+
+    // routes which doesn't need claims
     if (
       req.originalUrl === "/login" ||
       (req.method === "POST" &&
         (req.originalUrl === "/user_auths" ||
           req.originalUrl === "/user_profiles")) ||
-      req.originalUrl === "/token"
+      req.originalUrl.startsWith("/token")
     ) {
       req.claims = null;
       return;
     }
+
+    // set claims
     req.claims = req.cookies.access_token
       ? await tokenManager.verify(req.cookies.access_token)
       : null;
@@ -148,21 +153,30 @@ function start_web_server() {
 
   // ----- Token -----
 
-  web_server.get("/token", async (_req, res) => {
-    const tok = await tokenManager.encode(
-      {
-        sub: 1,
-        role: "guest",
-      },
-      false,
-    );
-    res.setCookie("access_token", tok, {
-      secure: true,
-      sameSite: false,
-      expires: addHours(new Date(), 1),
-    });
-    res.status(204);
-  });
+  // Thoses 2 routes are just here for testing
+
+  web_server.get<{ Params: ObjectId }>(
+    "/token/:id",
+    { schema: { params: ZObjectId } },
+    async (req, res) => {
+      const user_profile = await repo.readUserProfileById(req.params);
+      const token = await tokenManager.encode(
+        {
+          sub: user_profile.user_profile_id,
+          role: user_profile.user_profile_role,
+        },
+        false,
+      );
+      res
+        .setCookie("access_token", token, {
+          secure: true,
+          sameSite: false,
+          path: "/",
+          expires: addHours(new Date(), 1),
+        })
+        .code(204);
+    },
+  );
 
   web_server.get("/claims", async (req) => {
     return req.claims;

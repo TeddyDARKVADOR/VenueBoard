@@ -1,9 +1,9 @@
 BEGIN;
 
 INSERT INTO user_profile (user_profile_name, user_profile_role) VALUES
-  ('Alice Martin', 'manager'),
+  ('Alice Martin', 'staff'),
   ('Bob Finch', 'speaker'),
-  ('Carol Dupont', 'display_operator'),
+  ('Carol Dupont', 'staff'),
   ('Dave Leroy', 'speaker');
 
 INSERT INTO user_auth (user_auth_login, user_auth_password, user_profile_id) VALUES
