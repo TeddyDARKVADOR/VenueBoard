@@ -1,31 +1,7 @@
 import argon2 from "argon2";
 import postgres from "postgres";
 import { CustomError } from "./custom_error.js";
-import type {
-  Activity,
-  ActivityWithoutId,
-  Event,
-  EventWithActivities,
-  EventWithoutId,
-  ObjectId,
-  PartialActivityWithoutId,
-  PartialEventWithoutId,
-  PartialRegisterWithoutId,
-  PartialRoomWithoutId,
-  PartialRunWithoutId,
-  PartialUserAuthWithoutId,
-  PartialUserProfileWithoutId,
-  Register,
-  RegisterWithoutId,
-  Room,
-  RoomWithoutId,
-  Run,
-  RunWithoutId,
-  UserAuthWithoutId,
-  UserAuthWithoutPassword,
-  UserProfile,
-  UserProfileWithoutId,
-} from "./models.js";
+import type * as model from "./models.js";
 
 const ARGON2OPTS = {
   type: argon2.argon2id,
@@ -51,7 +27,7 @@ export class Repository {
 
   // ----- UserAuth -----
 
-  async createUserAuth(newUserAuth: UserAuthWithoutId) {
+  async createUserAuth(newUserAuth: model.UserAuthWithoutId) {
     const password = this.normalizePassword(newUserAuth.user_auth_password);
     const hash = await argon2.hash(password, ARGON2OPTS);
     const rows = (await this.sql`
@@ -59,22 +35,22 @@ export class Repository {
     (user_auth_login, user_auth_password, user_profile_id)
     VALUES
     (${newUserAuth.user_auth_login}, ${hash}, ${newUserAuth.user_profile_id})
-    RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
+    RETURNING user_auth_id, user_auth_login`) as model.UserAuthWithoutPassword[];
     return rows[0];
   }
 
   async readAllUserAuth() {
     const rows = (await this.sql`
       SELECT user_auth_id, user_auth_login
-      FROM user_auth`) as UserAuthWithoutPassword[];
+      FROM user_auth`) as model.UserAuthWithoutPassword[];
     return rows;
   }
 
-  async readUserAuthById({ id }: ObjectId) {
+  async readUserAuthById({ id }: model.ObjectId) {
     const rows = (await this.sql`
       SELECT user_auth_id, user_auth_login
       FROM user_auth
-      WHERE user_auth_id = ${id}`) as UserAuthWithoutPassword[];
+      WHERE user_auth_id = ${id}`) as model.UserAuthWithoutPassword[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
     }
@@ -82,8 +58,8 @@ export class Repository {
   }
 
   async updateUserAuthById(
-    { id }: ObjectId,
-    partialUserAuth: PartialUserAuthWithoutId,
+    { id }: model.ObjectId,
+    partialUserAuth: model.PartialUserAuthWithoutId,
   ) {
     const login = partialUserAuth.user_auth_login ?? null;
     const ref = partialUserAuth.user_profile_id ?? null;
@@ -101,25 +77,25 @@ export class Repository {
       user_auth_password = COALESCE(${hash}, user_auth_password),
       user_profil_id = COALESCE(${ref}, user_profile_id)
       WHERE user_auth_id = ${id}
-      RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
+      RETURNING user_auth_id, user_auth_login`) as model.UserAuthWithoutPassword[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
     }
     return rows[0];
   }
 
-  async deleteUserAuthById({ id }: ObjectId) {
+  async deleteUserAuthById({ id }: model.ObjectId) {
     const rows = (await this.sql`
       DELETE FROM user_auth
       WHERE user_auth_id = ${id}
-      RETURNING user_auth_id, user_auth_login`) as UserAuthWithoutPassword[];
+      RETURNING user_auth_id, user_auth_login`) as model.UserAuthWithoutPassword[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "user_auth");
     }
     return rows[0];
   }
 
-  async loginUserAuth(user: UserAuthWithoutId) {
+  async loginUserAuth(user: model.UserAuthWithoutId) {
     const rows = (await this.sql`
       SELECT user_auth_password
       FROM user_auth
@@ -142,29 +118,29 @@ export class Repository {
 
   // ----- UserProfile -----
 
-  async createUserProfile(newUserProfile: UserProfileWithoutId) {
+  async createUserProfile(newUserProfile: model.UserProfileWithoutId) {
     const rows = (await this.sql`
       INSERT INTO user_profile
       (user_profile_name, user_profile_role)
       VALUES
       (${newUserProfile.user_profile_name},
       ${newUserProfile.user_profile_role},
-      RETURNING *`) as UserProfile[];
+      RETURNING *`) as model.UserProfile[];
     return rows[0];
   }
 
   async readAllUserProfile() {
     const rows = (await this.sql`
       SELECT *
-      FROM user_profile`) as UserProfile[];
+      FROM user_profile`) as model.UserProfile[];
     return rows;
   }
 
-  async readUserProfileById({ id }: ObjectId) {
+  async readUserProfileById({ id }: model.ObjectId) {
     const rows = (await this.sql`
       SELECT *
       FROM user_profile
-      WHERE user_profile_id = ${id}`) as UserProfile[];
+      WHERE user_profile_id = ${id}`) as model.UserProfile[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
     }
@@ -172,8 +148,8 @@ export class Repository {
   }
 
   async updateUserProfileById(
-    { id }: ObjectId,
-    partialUserProfile: PartialUserProfileWithoutId,
+    { id }: model.ObjectId,
+    partialUserProfile: model.PartialUserProfileWithoutId,
   ) {
     const name = partialUserProfile.user_profile_name ?? null;
     const role = partialUserProfile.user_profile_role ?? null;
@@ -183,14 +159,14 @@ export class Repository {
       user_profile_name = COALESCE(${name}, user_profile_name),
       user_profile_role = COALESCE(${role}, user_profile_role)
       WHERE user_profile_id = ${id}
-      RETURNING *`) as UserProfile[];
+      RETURNING *`) as model.UserProfile[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "user_profile");
     }
     return rows[0];
   }
 
-  async deleteUserProfileById({ id }: ObjectId) {
+  async deleteUserProfileById({ id }: model.ObjectId) {
     const rows = await this.sql`
       DELETE FROM user_profile
       WHERE user_profile_id = ${id}
@@ -203,35 +179,38 @@ export class Repository {
 
   //----- Register -----
 
-  async createRegister(register: RegisterWithoutId) {
+  async createRegister(register: model.RegisterWithoutId) {
     const rows = (await this.sql`
     INSERT INTO register
     (user_profile_id, activity_id)
     VALUES
     (${register.user_profile_id} , ${register.activity_id})
-    RETURNING *`) as Register[];
+    RETURNING *`) as model.Register[];
     return rows[0];
   }
 
   async readAllRegister() {
     const rows = (await this.sql`
     SELECT *
-    FROM register`) as Register[];
+    FROM register`) as model.Register[];
     return rows;
   }
 
-  async readRegisterById({ id }: ObjectId) {
+  async readRegisterById({ id }: model.ObjectId) {
     const rows = (await this.sql`
     SELECT *
     FROM register
-    WHERE register_id = ${id}`) as Register[];
+    WHERE register_id = ${id}`) as model.Register[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "register");
     }
     return rows[0];
   }
 
-  async updateRegisterById({ id }: ObjectId, update: PartialRegisterWithoutId) {
+  async updateRegisterById(
+    { id }: model.ObjectId,
+    update: model.PartialRegisterWithoutId,
+  ) {
     const user_profile_id = update.user_profile_id ?? null;
     const activity_id = update.activity_id ?? null;
     const rows = (await this.sql`
@@ -240,18 +219,18 @@ export class Repository {
     user_profile_id = COALESCE(${user_profile_id}, user_profile_id),
     activity_id = COALESCE(${activity_id}, activity_id)
     WHERE register_id = ${id}
-    RETURNING *`) as Register[];
+    RETURNING *`) as model.Register[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "register");
     }
     return rows[0];
   }
 
-  async deleteRegisterById({ id }: ObjectId) {
+  async deleteRegisterById({ id }: model.ObjectId) {
     const rows = (await this.sql`
     DELETE FROM register
     WHERE register_id = ${id}
-    RETURNING *`) as Register[];
+    RETURNING *`) as model.Register[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "register");
     }
@@ -260,7 +239,7 @@ export class Repository {
 
   // ----- Event -----
 
-  async createEvent(newEvent: EventWithoutId) {
+  async createEvent(newEvent: model.EventWithoutId) {
     if (newEvent.event_start >= newEvent.event_end) {
       throw new CustomError(
         "LOGIC",
@@ -289,18 +268,21 @@ export class Repository {
     return rows;
   }
 
-  async readEventById({ id }: ObjectId) {
+  async readEventById({ id }: model.ObjectId) {
     const rows = (await this.sql`
       SELECT *
       FROM event
-      WHERE event_id = ${id}`) as Event[];
+      WHERE event_id = ${id}`) as model.Event[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
     return rows[0];
   }
 
-  async updateEventById({ id }: ObjectId, partialEvent: PartialEventWithoutId) {
+  async updateEventById(
+    { id }: model.ObjectId,
+    partialEvent: model.PartialEventWithoutId,
+  ) {
     const name = partialEvent.event_name ?? null;
     const description = partialEvent.event_description ?? null;
     const start = partialEvent.event_start
@@ -349,7 +331,7 @@ export class Repository {
     return rows[0];
   }
 
-  async deleteEventById({ id }: ObjectId) {
+  async deleteEventById({ id }: model.ObjectId) {
     const rows = (await this.sql`
       DELETE FROM event
       WHERE event_id = ${id}
@@ -362,7 +344,7 @@ export class Repository {
 
   // ----- Activity -----
 
-  async createActivity(newActivity: ActivityWithoutId) {
+  async createActivity(newActivity: model.ActivityWithoutId) {
     if (newActivity.activity_start >= newActivity.activity_end) {
       throw new CustomError(
         "LOGIC",
@@ -410,22 +392,22 @@ export class Repository {
        ${newActivity.activity_real_end},
        ${newActivity.event_id},
        ${newActivity.room_id})
-      RETURNING *`) as Activity[];
+      RETURNING *`) as model.Activity[];
     return rows[0];
   }
 
   async readAllActivities() {
     const rows = (await this.sql`
       SELECT *
-      FROM activity`) as Activity[];
+      FROM activity`) as model.Activity[];
     return rows;
   }
 
-  async readActivityById({ id }: ObjectId) {
+  async readActivityById({ id }: model.ObjectId) {
     const rows = (await this.sql`
       SELECT *
       FROM activity
-      WHERE activity_id = ${id}`) as Activity[];
+      WHERE activity_id = ${id}`) as model.Activity[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "activity");
     }
@@ -433,8 +415,8 @@ export class Repository {
   }
 
   async updateActivityById(
-    { id }: ObjectId,
-    partialActivity: PartialActivityWithoutId,
+    { id }: model.ObjectId,
+    partialActivity: model.PartialActivityWithoutId,
   ) {
     const name = partialActivity.activity_name ?? null;
     const description = partialActivity.activity_description ?? null;
@@ -525,18 +507,18 @@ export class Repository {
       event_id = COALESCE(${eventId}, event_id),
       room_id = COALESCE(${roomId}, room_id)
       WHERE activity_id = ${id}
-      RETURNING *`) as Activity[];
+      RETURNING *`) as model.Activity[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "activity");
     }
     return rows[0];
   }
 
-  async deleteActivityById({ id }: ObjectId) {
+  async deleteActivityById({ id }: model.ObjectId) {
     const rows = (await this.sql`
       DELETE FROM activity
       WHERE activity_id = ${id}
-      RETURNING *`) as Activity[];
+      RETURNING *`) as model.Activity[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "activity");
     }
@@ -545,33 +527,36 @@ export class Repository {
 
   // ----- Room -----
 
-  async createRoom(newRoom: RoomWithoutId) {
+  async createRoom(newRoom: model.RoomWithoutId) {
     const rows = (await this.sql`
     INSERT INTO room
     (room_name, room_location, room_capacity)
     VALUES
     (${newRoom.room_name}, ${newRoom.room_location}, ${newRoom.room_capacity})
-    RETURNING *`) as Room[];
+    RETURNING *`) as model.Room[];
     return rows[0];
   }
 
   async readRoom() {
     const rows = (await this.sql`
-    SELECT * FROM room`) as Room[];
+    SELECT * FROM room`) as model.Room[];
     return rows;
   }
 
-  async readRoomById({ id }: ObjectId) {
+  async readRoomById({ id }: model.ObjectId) {
     const rows = (await this.sql`
     SELECT * FROM room
-    WHERE room_id = ${id}`) as Room[];
+    WHERE room_id = ${id}`) as model.Room[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "room");
     }
     return rows[0];
   }
 
-  async updateRoomById({ id }: ObjectId, partialRoom: PartialRoomWithoutId) {
+  async updateRoomById(
+    { id }: model.ObjectId,
+    partialRoom: model.PartialRoomWithoutId,
+  ) {
     const name = partialRoom.room_name ?? null;
     const location = partialRoom.room_location ?? null;
     const capacity = partialRoom.room_capacity ?? null;
@@ -582,18 +567,18 @@ export class Repository {
     room_location = COALESCE(${location}, room_location),
     room_capacity = COALESCE(${capacity}, room_capacity)
     WHERE room_id = ${id}
-    RETURNING *`) as Room[];
+    RETURNING *`) as model.Room[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "room");
     }
     return rows[0];
   }
 
-  async deleteRoomById({ id }: ObjectId) {
+  async deleteRoomById({ id }: model.ObjectId) {
     const rows = (await this.sql`
     DELETE FROM room
     WHERE room_id = ${id}
-    RETURNING *`) as Room[];
+    RETURNING *`) as model.Room[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "room");
     }
@@ -602,33 +587,33 @@ export class Repository {
 
   // ----- Run -----
 
-  async createRun(newRun: RunWithoutId) {
+  async createRun(newRun: model.RunWithoutId) {
     const rows = (await this.sql`
     INSERT INTO Run
     (ref_user_profile_id, ref_activity_id)
     VALUES
     (${newRun.ref_user_profile_id}, ${newRun.ref_activity_id})
-    RETURNING *`) as Run[];
+    RETURNING *`) as model.Run[];
     return rows[0];
   }
 
   async readRun() {
     const rows = (await this.sql`
-    SELECT * FROM run`) as Run[];
+    SELECT * FROM run`) as model.Run[];
     return rows;
   }
 
-  async readRunById({ id }: ObjectId) {
+  async readRunById({ id }: model.ObjectId) {
     const rows = (await this.sql`
     SELECT * FROM run
-    WHERE run_id = ${id}`) as Run[];
+    WHERE run_id = ${id}`) as model.Run[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "run");
     }
     return rows[0];
   }
 
-  async updateRunById(id: number, partialRun: PartialRunWithoutId) {
+  async updateRunById(id: number, partialRun: model.PartialRunWithoutId) {
     const ref_user_profile_id = partialRun.ref_user_profile_id ?? null;
     const ref_activity_id = partialRun.ref_activity_id ?? null;
     const rows = (await this.sql`
@@ -637,18 +622,18 @@ export class Repository {
     ref_user_profile_id = COALESCE(${ref_user_profile_id}, ref_user_profile_id)
     ref_activity_id = COALESCE(${ref_activity_id}, ref_activity_id)
     WHERE run_id = ${id}
-    RETURNING *`) as Run[];
+    RETURNING *`) as model.Run[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "run");
     }
     return rows[0];
   }
 
-  async deleteRunById({ id }: ObjectId) {
+  async deleteRunById({ id }: model.ObjectId) {
     const rows = (await this.sql`
     DELETE FROM run
     WHERE run_id = ${id}
-    RETURNING *`) as Run[];
+    RETURNING *`) as model.Run[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "run");
     }
@@ -657,7 +642,7 @@ export class Repository {
 
   // ----- Complex requests ------
 
-  async readEventWithActivitiesByEventId({ id }: ObjectId) {
+  async readEventWithActivitiesByEventId({ id }: model.ObjectId) {
     const rows = (await this.sql`
     SELECT
       event.*,
@@ -665,14 +650,14 @@ export class Repository {
     FROM event
     LEFT JOIN activity ON activity.event_id = event.event_id
     WHERE event.event_id = ${id}
-    GROUP BY event.event_id`) as EventWithActivities[];
+    GROUP BY event.event_id`) as model.EventWithActivities[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
     return rows[0];
   }
 
-  async readActivityWithEventByActivityId({ id }: ObjectId) {
+  async readActivityWithEventByActivityId({ id }: model.ObjectId) {
     const rows = await this.sql`
      SELECT
   activity.*,
