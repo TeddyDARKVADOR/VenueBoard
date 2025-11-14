@@ -94,7 +94,6 @@ function start_web_server() {
       }
       return {
         message: error.message,
-        statusCode: error.code,
       };
     }
     console.error("Unexpected error: ", error);
