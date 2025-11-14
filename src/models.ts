@@ -123,6 +123,12 @@ export const ZEventWithActivities = ZEvent.extend({
 
 export type EventWithActivities = z.infer<typeof ZEventWithActivities>;
 
+export const ZActivityWithEvent = ZActivity.extend({
+  event: ZEvent,
+});
+
+export type ActivityWithEvent = z.infer<typeof ZActivityWithEvent>;
+
 export const ZJwtClaims = z.object({
   sub: z.string(),
   role: ZUserProfile.shape.user_profile_role,

@@ -257,14 +257,14 @@ export class Repository {
        ${newEvent.event_start},
        ${newEvent.event_end},
        ${newEvent.user_profile_id})
-      RETURNING *`) as Event[];
+      RETURNING *`) as model.Event[];
     return rows[0];
   }
 
   async readAllEvents() {
     const rows = (await this.sql`
       SELECT *
-      FROM event`) as Event[];
+      FROM event`) as model.Event[];
     return rows;
   }
 
@@ -324,7 +324,7 @@ export class Repository {
       event_end = COALESCE(${end}, event_end),
       user_profile_id = COALESCE(${ref}, user_profile_id)
       WHERE event_id = ${id}
-      RETURNING *`) as Event[];
+      RETURNING *`) as model.Event[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
@@ -335,7 +335,7 @@ export class Repository {
     const rows = (await this.sql`
       DELETE FROM event
       WHERE event_id = ${id}
-      RETURNING *`) as Event[];
+      RETURNING *`) as model.Event[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
@@ -658,13 +658,13 @@ export class Repository {
   }
 
   async readActivityWithEventByActivityId({ id }: model.ObjectId) {
-    const rows = await this.sql`
+    const rows = (await this.sql`
      SELECT
   activity.*,
   row_to_json(event) AS event
 FROM activity
 LEFT JOIN event ON activity.event_id = event.event_id
-WHERE activity.activity_id = ${id}`;
+WHERE activity.activity_id = ${id}`) as model.ActivityWithEvent[];
     if (rows.length === 0) {
       throw new CustomError("POSTGRES", 404, "Not found", "event");
     }
