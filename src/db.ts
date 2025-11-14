@@ -1,5 +1,4 @@
 import argon2 from "argon2";
-import crypto from "crypto";
 import postgres from "postgres";
 import { CustomError } from "./custom_error.js";
 import type {
@@ -54,10 +53,7 @@ export class Repository {
 
   async createUserAuth(newUserAuth: UserAuthWithoutId) {
     const password = this.normalizePassword(newUserAuth.user_auth_password);
-    const peppered = process.env.PEPPER
-      ? this.applyPepper(password, process.env.PEPPER)
-      : password;
-    const hash = await argon2.hash(peppered, ARGON2OPTS);
+    const hash = await argon2.hash(password, ARGON2OPTS);
     const rows = (await this.sql`
     INSERT INTO user_auth
     (user_auth_login, user_auth_password, user_profile_id)
@@ -93,7 +89,10 @@ export class Repository {
     const ref = partialUserAuth.user_profile_id ?? null;
     let hash = null;
     if (partialUserAuth.user_auth_password) {
-      hash = await argon2.hash(partialUserAuth.user_auth_password, ARGON2OPTS);
+      const password = this.normalizePassword(
+        partialUserAuth.user_auth_password,
+      );
+      hash = await argon2.hash(password, ARGON2OPTS);
     }
     const rows = (await this.sql`
       UPDATE user_auth
@@ -134,18 +133,11 @@ export class Repository {
   }
 
   private normalizePassword(password: string) {
-    const MAX = 1024;
     const normalized = password.normalize("NFKC");
-    if (normalized.length === 0 || normalized.length > MAX)
-      throw new Error("Invalid password length");
+    if (normalized.length < 1 || normalized.length > 1024) {
+      throw new CustomError("LOGIC", 409, "invalid password length");
+    }
     return normalized;
-  }
-
-  private applyPepper(normalized: string, pepperKey: string) {
-    return crypto
-      .createHmac("sha384", pepperKey)
-      .update(normalized, "utf8")
-      .digest("base64");
   }
 
   // ----- UserProfile -----
