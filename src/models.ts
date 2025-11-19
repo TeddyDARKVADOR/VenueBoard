@@ -48,18 +48,11 @@ export type PartialUserProfileWithoutId = z.infer<
 >;
 
 export const ZRegister = z.object({
-  register_id: ZId,
   user_profile_id: ZId,
   activity_id: ZId,
 });
-export const ZRegisterWithoutId = ZRegister.omit({ register_id: true });
-export const ZPartialRegisterWithoutId = ZRegisterWithoutId.partial();
 
 export type Register = z.infer<typeof ZRegister>;
-export type RegisterWithoutId = z.infer<typeof ZRegisterWithoutId>;
-export type PartialRegisterWithoutId = z.infer<
-  typeof ZPartialRegisterWithoutId
->;
 
 export const ZEvent = z.object({
   event_id: ZId,
@@ -110,16 +103,28 @@ export type RoomWithoutId = z.infer<typeof ZRoomWithoutId>;
 export type PartialRoomWithoutId = z.infer<typeof ZPartialRoomWithoutId>;
 
 export const ZRun = z.object({
-  run_id: ZId,
-  ref_user_profile_id: ZId,
-  ref_activity_id: ZId,
+  user_profile_id: ZId,
+  activity_id: ZId,
 });
-export const ZRunWithoutId = ZRun.omit({ run_id: true });
-export const ZPartialRunWithoutId = ZRunWithoutId.partial();
 
 export type Run = z.infer<typeof ZRun>;
-export type RunWithoutId = z.infer<typeof ZRunWithoutId>;
-export type PartialRunWithoutId = z.infer<typeof ZPartialRunWithoutId>;
+
+export const ZQueue = z.object({
+  position: z.coerce.number().int().positive(),
+  user_profile_id: ZId,
+  activity_id: ZId,
+});
+export const ZQueueWithoutPos = ZQueue.omit({ position: true });
+
+export type Queue = z.infer<typeof ZQueue>;
+export type QueueWihtoutPos = z.infer<typeof ZQueue>;
+
+export const ZFavorite = z.object({
+  user_profile_id: ZId,
+  activity_id: ZId,
+});
+
+export type Favorite = z.infer<typeof ZFavorite>;
 
 export const ZEventWithActivities = ZEvent.extend({
   activities: ZActivity.array(),

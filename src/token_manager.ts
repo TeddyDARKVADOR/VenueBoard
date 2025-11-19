@@ -77,9 +77,6 @@ export function requireRoles(
     if (!req.claims) {
       throw new CustomError("TOKEN", HttpStatus.UNAUTHORIZED, "unauthorized");
     }
-    if (req.claims.role === "admin") {
-      return;
-    }
     if (!roles.find((curr) => curr === req.claims?.role)) {
       throw new CustomError("REQUEST", HttpStatus.FORBIDDEN, "forbidden");
     }

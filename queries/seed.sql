@@ -40,6 +40,17 @@ INSERT INTO register (user_profile_id, activity_id) VALUES
   (3, 3),
   (1, 4);
 
+INSERT INTO favorite (user_profile_id, activity_id) VALUES
+  (1, 4),
+  (1, 2),
+  (2, 1);
+
+INSERT INTO queue (position, user_profile_id, activity_id) VALUES
+  (3, 2, 2),
+  (1, 1, 2),
+  (2, 3, 2),
+  (1, 4, 1);
+
 INSERT INTO event (event_name, event_description, event_start, event_end, user_profile_id) VALUES
   ('Mini Games Fair', 'Games area with demos and tournaments', '2026-07-01 09:00:00+02', '2026-07-01 18:00:00+02', 1);
 

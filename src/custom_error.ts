@@ -12,7 +12,9 @@ export class CustomError extends Error {
       | "user_profile"
       | "room"
       | "register"
-      | "run",
+      | "run"
+      | "favorite"
+      | "queue",
   ) {
     super(`[${subject}] Error: ${message}`);
   }

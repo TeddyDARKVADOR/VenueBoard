@@ -186,7 +186,10 @@ function start_web_server() {
 
   web_server.post<{ Body: EventWithoutId }>(
     "/events",
-    { schema: { body: ZEventWithoutId }, preHandler: requireRoles(["staff"]) },
+    {
+      schema: { body: ZEventWithoutId },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
     async (req) => {
       const event = await repo.createEvent(req.body);
       return { event_id: event.event_id, message: "created" };
@@ -217,7 +220,7 @@ function start_web_server() {
     "/events/:id",
     {
       schema: { params: ZObjectId, body: ZPartialEventWithoutId },
-      preHandler: requireRoles(["staff"]),
+      preHandler: requireRoles(["admin", "staff"]),
     },
     async (req) => {
       const event = await repo.updateEventById(req.params, req.body);
@@ -227,7 +230,10 @@ function start_web_server() {
 
   web_server.delete<{ Params: ObjectId }>(
     "/events/:id",
-    { schema: { params: ZObjectId }, preHandler: requireRoles(["staff"]) },
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
     async (req) => {
       await repo.deleteEventById(req.params);
       return { message: "deleted" };
@@ -240,7 +246,7 @@ function start_web_server() {
     "/activities",
     {
       schema: { body: ZActivityWithoutId },
-      preHandler: requireRoles(["staff"]),
+      preHandler: requireRoles(["admin", "staff"]),
     },
     async (req) => {
       const activity = await repo.createActivity(req.body);
@@ -272,17 +278,24 @@ function start_web_server() {
     "/activities/:id",
     {
       schema: { params: ZObjectId, body: ZPartialActivityWithoutId },
-      preHandler: requireRoles(["staff"]),
+      preHandler: requireRoles(["admin", "staff", "speaker"]),
     },
     async (req) => {
-      const activity = await repo.updateActivityById(req.params, req.body);
+      const activity = await repo.updateActivityById(
+        req.params,
+        req.body,
+        req.claims?.role,
+      );
       return { activity_id: activity.activity_id, message: "updated" };
     },
   );
 
   web_server.delete<{ Params: ObjectId }>(
     "/activities/:id",
-    { schema: { params: ZObjectId }, preHandler: requireRoles(["staff"]) },
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
     async (req) => {
       await repo.deleteActivityById(req.params);
       return { message: "deleted" };
@@ -295,7 +308,10 @@ function start_web_server() {
     "/user_profiles",
     { schema: { body: ZUserProfileWithoutId } },
     async (req) => {
-      const user_profile = await repo.createUserProfile(req.body);
+      const user_profile = await repo.createUserProfile(
+        req.body,
+        req.claims?.role,
+      );
       return {
         user_profile_id: user_profile.user_profile_id,
         message: "created",
@@ -320,7 +336,7 @@ function start_web_server() {
     {
       schema: { params: ZObjectId, body: ZPartialUserProfileWithoutId },
       preHandler: [
-        requireRoles(["guest", "speaker", "staff"]),
+        requireRoles(["admin", "guest", "speaker", "staff"]),
         sameId("/user_profiles/"),
       ],
     },
@@ -328,6 +344,7 @@ function start_web_server() {
       const user_profile = await repo.updateUserProfileById(
         req.params,
         req.body,
+        req.claims?.role,
       );
       return {
         user_profile_id: user_profile.user_profile_id,
@@ -341,7 +358,7 @@ function start_web_server() {
     {
       schema: { params: ZObjectId },
       preHandler: [
-        requireRoles(["guest", "speaker", "staff"]),
+        requireRoles(["admin", "guest", "speaker", "staff"]),
         sameId("/user_profiles/"),
       ],
     },
@@ -395,16 +412,20 @@ function start_web_server() {
     },
   );
 
-  web_server.get("/user_auths", { preHandler: requireRoles([]) }, async () => {
-    return await repo.readAllUserAuth();
-  });
+  web_server.get(
+    "/user_auths",
+    { preHandler: requireRoles(["admin"]) },
+    async () => {
+      return await repo.readAllUserAuth();
+    },
+  );
 
   web_server.get<{ Params: ObjectId }>(
     "/user_auths/:id",
     {
       schema: { params: ZObjectId },
       preHandler: [
-        requireRoles(["guest", "speaker", "staff"]),
+        requireRoles(["admin", "guest", "speaker", "staff"]),
         sameId("/user_auths/"),
       ],
     },
@@ -418,7 +439,7 @@ function start_web_server() {
     {
       schema: { params: ZObjectId, body: ZPartialUserAuthWithoutId },
       preHandler: [
-        requireRoles(["guest", "speaker", "staff"]),
+        requireRoles(["admin", "guest", "speaker", "staff"]),
         sameId("/user_auths/"),
       ],
     },
@@ -433,7 +454,7 @@ function start_web_server() {
     {
       schema: { params: ZObjectId },
       preHandler: [
-        requireRoles(["guest", "speaker", "staff"]),
+        requireRoles(["admin", "guest", "speaker", "staff"]),
         sameId("/user_auths/"),
       ],
     },

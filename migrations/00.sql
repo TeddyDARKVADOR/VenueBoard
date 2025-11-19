@@ -40,13 +40,26 @@ CREATE TABLE IF NOT EXISTS activity (
 );
 
 CREATE TABLE IF NOT EXISTS run (
-  run_id SERIAL PRIMARY KEY,
   user_profile_id INT NOT NULL REFERENCES user_profile(user_profile_id) ON DELETE CASCADE,
-  activity_id INT NOT NULL REFERENCES activity(activity_id) ON DELETE CASCADE
+  activity_id INT NOT NULL REFERENCES activity(activity_id) ON DELETE CASCADE,
+  PRIMARY KEY (user_profile_id, activity_id)
 );
 
 CREATE TABLE IF NOT EXISTS register (
-  register_id SERIAL PRIMARY KEY,
   user_profile_id INT NOT NULL REFERENCES user_profile(user_profile_id) ON DELETE CASCADE,
-  activity_id INT NOT NULL REFERENCES activity(activity_id) ON DELETE CASCADE
+  activity_id INT NOT NULL REFERENCES activity(activity_id) ON DELETE CASCADE,
+  PRIMARY KEY (user_profile_id, activity_id)
+);
+
+CREATE TABLE IF NOT EXISTS favorite (
+  user_profile_id INT NOT NULL REFERENCES user_profile(user_profile_id) ON DELETE CASCADE,
+  activity_id INT NOT NULL REFERENCES activity(activity_id) ON DELETE CASCADE,
+  PRIMARY KEY (user_profile_id, activity_id)
+);
+
+CREATE TABLE IF NOT EXISTS queue (
+  position INT NOT NULL,
+  user_profile_id INT NOT NULL REFERENCES user_profile(user_profile_id) ON DELETE CASCADE,
+  activity_id INT NOT NULL REFERENCES activity(activity_id) ON DELETE CASCADE,
+  PRIMARY KEY (user_profile_id, activity_id)
 );

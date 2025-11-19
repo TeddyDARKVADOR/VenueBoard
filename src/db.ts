@@ -146,7 +146,22 @@ export class Repository {
 
   // ----- UserProfile -----
 
-  async createUserProfile(newUserProfile: model.UserProfileWithoutId) {
+  async createUserProfile(
+    newUserProfile: model.UserProfileWithoutId,
+    role: model.UserProfile["user_profile_role"] | undefined,
+  ) {
+    if (newUserProfile.user_profile_role !== "guest") {
+      if (!role) {
+        throw new CustomError("TOKEN", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      if (role !== "admin") {
+        throw new CustomError(
+          "TOKEN",
+          HttpStatus.FORBIDDEN,
+          "forbidden, only an admin can create un user profile with another role than guest",
+        );
+      }
+    }
     const rows = (await this.sql`
       INSERT INTO user_profile
       (user_profile_name, user_profile_role)
@@ -183,14 +198,27 @@ export class Repository {
   async updateUserProfileById(
     { id }: model.ObjectId,
     partialUserProfile: model.PartialUserProfileWithoutId,
+    role: model.UserProfile["user_profile_role"] | undefined,
   ) {
+    if (!role) {
+      throw new CustomError("TOKEN", HttpStatus.UNAUTHORIZED, "unauthorized");
+    }
     const name = partialUserProfile.user_profile_name ?? null;
-    const role = partialUserProfile.user_profile_role ?? null;
+    const newRole = partialUserProfile.user_profile_role ?? null;
+    if (newRole) {
+      if (role !== "admin") {
+        throw new CustomError(
+          "TOKEN",
+          HttpStatus.FORBIDDEN,
+          "forbidden, only a admin can update a role",
+        );
+      }
+    }
     const rows = (await this.sql`
       UPDATE user_profile
       SET
       user_profile_name = COALESCE(${name}, user_profile_name),
-      user_profile_role = COALESCE(${role}, user_profile_role)
+      user_profile_role = COALESCE(${newRole}, user_profile_role)
       WHERE user_profile_id = ${id}
       RETURNING *`) as model.UserProfile[];
     if (rows.length === 0) {
@@ -222,7 +250,14 @@ export class Repository {
 
   //----- Register -----
 
-  async createRegister(register: model.RegisterWithoutId) {
+  async createRegister(register: model.Register) {
+    if (
+      (await this.remainingSeatsInActivityById({ id: register.activity_id })) <=
+      0
+    ) {
+      throw new CustomError("LOGIC", HttpStatus.CONFLICT, "no remaining seats");
+    }
+    this.canRegister(register);
     const rows = (await this.sql`
     INSERT INTO register
     (user_profile_id, activity_id)
@@ -232,6 +267,39 @@ export class Repository {
     return rows[0];
   }
 
+  private async canRegister(register: model.Register) {
+    const activity = await this.readActivityById({ id: register.activity_id });
+    const act_start = activity.activity_real_start ?? activity.activity_start;
+    if (act_start < new Date()) {
+      throw new CustomError(
+        "LOGIC",
+        HttpStatus.CONFLICT,
+        "cannot register to an activity that have already started",
+      );
+    }
+    const registered_activities =
+      await this.readAllRegisteredActivitiesByUserProfileId({
+        id: register.user_profile_id,
+      });
+    if (registered_activities.length > 0) {
+      const act_end = activity.activity_real_end ?? activity.activity_end;
+      for (const curr of registered_activities) {
+        const curr_start = curr.activity_real_start ?? curr.activity_start;
+        const curr_end = curr.activity_real_end ?? curr.activity_end;
+        if (
+          (act_start >= curr_start && act_start <= curr_end) ||
+          (act_end <= curr_end && act_end >= curr_start)
+        ) {
+          throw new CustomError(
+            "LOGIC",
+            HttpStatus.CONFLICT,
+            `this activity overlap your already registerd activity: '${curr.activity_name}'`,
+          );
+        }
+      }
+    }
+  }
+
   async readAllRegister() {
     const rows = (await this.sql`
     SELECT *
@@ -239,50 +307,11 @@ export class Repository {
     return rows;
   }
 
-  async readRegisterById({ id }: model.ObjectId) {
-    const rows = (await this.sql`
-    SELECT *
-    FROM register
-    WHERE register_id = ${id}`) as model.Register[];
-    if (rows.length === 0) {
-      throw new CustomError(
-        "POSTGRES",
-        HttpStatus.NOT_FOUND,
-        "Not found",
-        "register",
-      );
-    }
-    return rows[0];
-  }
-
-  async updateRegisterById(
-    { id }: model.ObjectId,
-    update: model.PartialRegisterWithoutId,
-  ) {
-    const user_profile_id = update.user_profile_id ?? null;
-    const activity_id = update.activity_id ?? null;
-    const rows = (await this.sql`
-    UPDATE register
-    SET
-    user_profile_id = COALESCE(${user_profile_id}, user_profile_id),
-    activity_id = COALESCE(${activity_id}, activity_id)
-    WHERE register_id = ${id}
-    RETURNING *`) as model.Register[];
-    if (rows.length === 0) {
-      throw new CustomError(
-        "POSTGRES",
-        HttpStatus.NOT_FOUND,
-        "Not found",
-        "register",
-      );
-    }
-    return rows[0];
-  }
-
-  async deleteRegisterById({ id }: model.ObjectId) {
+  async deleteRegister(register: model.Register) {
     const rows = (await this.sql`
     DELETE FROM register
-    WHERE register_id = ${id}
+    WHERE user_profile_id = ${register.user_profile_id}
+    AND activity_id = ${register.activity_id}
     RETURNING *`) as model.Register[];
     if (rows.length === 0) {
       throw new CustomError(
@@ -495,7 +524,11 @@ export class Repository {
   async updateActivityById(
     { id }: model.ObjectId,
     partialActivity: model.PartialActivityWithoutId,
+    role: model.UserProfile["user_profile_role"] | undefined,
   ) {
+    if (!role) {
+      throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+    }
     const name = partialActivity.activity_name ?? null;
     const description = partialActivity.activity_description ?? null;
     const start = partialActivity.activity_start
@@ -512,6 +545,16 @@ export class Repository {
       : null;
     const eventId = partialActivity.event_id ?? null;
     const roomId = partialActivity.room_id ?? null;
+    if (
+      role === "speaker" &&
+      (name || description || start || end || eventId || roomId)
+    ) {
+      throw new CustomError(
+        "LOGIC",
+        HttpStatus.FORBIDDEN,
+        "forbidden, a speaker can only update real start and real end",
+      );
+    }
 
     if (start && end && start >= end) {
       throw new CustomError(
@@ -625,7 +668,7 @@ export class Repository {
     return rows[0];
   }
 
-  async readRoom() {
+  async readAllRooms() {
     const rows = (await this.sql`
     SELECT * FROM room`) as model.Room[];
     return rows;
@@ -690,62 +733,27 @@ export class Repository {
 
   // ----- Run -----
 
-  async createRun(newRun: model.RunWithoutId) {
+  async createRun(newRun: model.Run) {
     const rows = (await this.sql`
     INSERT INTO Run
-    (ref_user_profile_id, ref_activity_id)
+    (user_profile_id, activity_id)
     VALUES
-    (${newRun.ref_user_profile_id}, ${newRun.ref_activity_id})
+    (${newRun.user_profile_id}, ${newRun.activity_id})
     RETURNING *`) as model.Run[];
     return rows[0];
   }
 
-  async readRun() {
+  async readAllRuns() {
     const rows = (await this.sql`
     SELECT * FROM run`) as model.Run[];
     return rows;
   }
 
-  async readRunById({ id }: model.ObjectId) {
-    const rows = (await this.sql`
-    SELECT * FROM run
-    WHERE run_id = ${id}`) as model.Run[];
-    if (rows.length === 0) {
-      throw new CustomError(
-        "POSTGRES",
-        HttpStatus.NOT_FOUND,
-        "Not found",
-        "run",
-      );
-    }
-    return rows[0];
-  }
-
-  async updateRunById(id: number, partialRun: model.PartialRunWithoutId) {
-    const ref_user_profile_id = partialRun.ref_user_profile_id ?? null;
-    const ref_activity_id = partialRun.ref_activity_id ?? null;
-    const rows = (await this.sql`
-    UPDATE run
-    SET
-    ref_user_profile_id = COALESCE(${ref_user_profile_id}, ref_user_profile_id)
-    ref_activity_id = COALESCE(${ref_activity_id}, ref_activity_id)
-    WHERE run_id = ${id}
-    RETURNING *`) as model.Run[];
-    if (rows.length === 0) {
-      throw new CustomError(
-        "POSTGRES",
-        HttpStatus.NOT_FOUND,
-        "Not found",
-        "run",
-      );
-    }
-    return rows[0];
-  }
-
-  async deleteRunById({ id }: model.ObjectId) {
+  async deleteRun(run: model.Run) {
     const rows = (await this.sql`
     DELETE FROM run
-    WHERE run_id = ${id}
+    WHERE user_profile_id = ${run.user_profile_id}
+    AND activity_id = ${run.activity_id}
     RETURNING *`) as model.Run[];
     if (rows.length === 0) {
       throw new CustomError(
@@ -756,6 +764,148 @@ export class Repository {
       );
     }
     return rows[0];
+  }
+
+  // ----- Favorite -----
+
+  async createFavorite(favorite: model.Favorite) {
+    const rows = (await this.sql`
+      INSERT INTO favorite
+      (user_profile_id, activity_id)
+      VALUES
+      (${favorite.user_profile_id}, ${favorite.activity_id})
+      RETURNING *`) as model.Favorite[];
+    return rows[0];
+  }
+
+  async readAllFavorites() {
+    const rows = (await this.sql`
+      SELECT *
+      FROM favorite`) as model.Favorite[];
+    return rows;
+  }
+
+  async deleteFavorite(favorite: model.Favorite) {
+    const rows = (await this.sql`
+      DELETE FROM favorite
+      WHERE user_profile_id = ${favorite.user_profile_id}
+      AND activity_id = ${favorite.activity_id}
+      RETURNING *`) as model.Favorite[];
+    if (rows.length === 0) {
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "favorite",
+      );
+    }
+    return rows[0];
+  }
+
+  // ----- Queue -----
+
+  async createQueue(queue: model.QueueWihtoutPos) {
+    this.canRegister(queue as model.Register);
+    const position = await this.getNextPositionForActivityId({
+      id: queue.activity_id,
+    });
+    const rows = (await this.sql`
+      INSERT INTO queue
+      (position, user_profile_id, activity_id)
+      VALUES
+      (${position} ,${queue.user_profile_id}, ${queue.activity_id})
+      RETURNING *`) as model.Queue[];
+    return rows[0];
+  }
+
+  async readAllQueues() {
+    const rows = (await this.sql`
+      SELECT *
+      FROM queue`) as model.Queue[];
+    return rows;
+  }
+
+  async deleteQueue(queue: model.QueueWihtoutPos) {
+    const rows = (await this.sql`
+      DELETE FROM queue
+      WHERE user_profile_id = ${queue.user_profile_id}
+      AND activity_id = ${queue.activity_id}
+      RETURNING *`) as model.Queue[];
+    if (rows.length === 0) {
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "queue",
+      );
+    }
+    return rows[0];
+  }
+
+  async queueToRegister() {
+    const activity_ids = (await this.sql`
+      SELECT activity_id
+      FROM queue`) as { activity_id: number }[];
+    const activities_and_seats: {
+      activity_id: number;
+      seats_available: number;
+    }[] = [];
+
+    for (const act_id of activity_ids) {
+      activities_and_seats.push({
+        activity_id: act_id.activity_id,
+        seats_available: await this.remainingSeatsInActivityById({
+          id: act_id.activity_id,
+        }),
+      });
+    }
+
+    for (const curr of activities_and_seats) {
+      if (curr.seats_available <= 0) continue;
+      const user_profile_ids = await this.readNUserProfileIdInQueueByActivityId(
+        curr.seats_available,
+        { id: curr.activity_id },
+      );
+
+      for (const id of user_profile_ids) {
+        try {
+          this.createRegister({
+            user_profile_id: id,
+            activity_id: curr.activity_id,
+          });
+        } catch (error) {
+          console.error(error);
+          continue;
+        }
+        await this.sql`
+            DELETE FROM queue
+            WHERE user_profile_id = ${id} AND acitivity_id = ${curr.activity_id}`;
+      }
+    }
+  }
+
+  async cleanPosition() {
+    const activity_ids = (
+      await this.sql`
+      SELECT activity_id
+      FROM queue`
+    ).map((curr) => curr.activity_id) as number[];
+    for (const activity_id of activity_ids) {
+      const user_profile_ids = (
+        await this.sql`
+        SELECT user_profile_id
+        FROM queue
+        WHERE activity_id = ${activity_id}`
+      ).map((curr) => curr.user_profile_id) as number[];
+      let pos = 1;
+      for (const user_profile_id of user_profile_ids) {
+        await this.sql`
+        UPDATE queue
+        SET position = ${pos}
+        WHERE user_profile_id = ${user_profile_id}`;
+        pos += 1;
+      }
+    }
   }
 
   // ----- Complex requests ------
@@ -797,6 +947,63 @@ WHERE activity.activity_id = ${id}`) as model.ActivityWithEvent[];
       );
     }
     return rows[0];
+  }
+
+  async remainingSeatsInActivityById({ id }: model.ObjectId) {
+    const rows = (await this.sql`
+       SELECT
+        room.room_capacity - COUNT(register.activity_id) AS remaining_seats
+      FROM room
+      JOIN activity ON activity.room_id = room.room_id
+      LEFT JOIN register ON register.activity_id = activity.activity_id
+      WHERE activity.activity_id = ${id}
+      GROUP BY room.room_capacity;
+      `) as { remaining_seats: number }[];
+    if (rows.length === 0) {
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "activity",
+      );
+    }
+    return rows[0].remaining_seats;
+  }
+
+  async readAllRegisteredActivitiesByUserProfileId({ id }: model.ObjectId) {
+    const rows = (await this.sql`
+    SELECT activity.*
+    FROM activity
+    JOIN register on activity.activity_id = register.activity_id
+    WHERE register.user_profile_id = ${id};
+      `) as model.Activity[];
+    return rows;
+  }
+
+  async readNUserProfileIdInQueueByActivityId(
+    n: number,
+    { id }: model.ObjectId,
+  ) {
+    const rows = (await this.sql`
+      SELECT user_profile_id
+      FROM queue
+      WHERE activity_id = ${id}
+      ORDER BY position
+      LIMIT ${n};`) as { user_profile_id: number }[];
+    return rows.map((curr) => curr.user_profile_id);
+  }
+
+  async getNextPositionForActivityId({ id }: model.ObjectId) {
+    const rows = (await this.sql`
+      SELECT position
+      FROM queue
+      WHERE activity_id = ${id}
+      ORDER BY position DESC
+      LIMIT 1;`) as { position: number }[];
+    if (rows.length === 0) {
+      return 1;
+    }
+    return rows[0].position + 1;
   }
 
   async end() {
