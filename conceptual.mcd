@@ -8,7 +8,7 @@ Create, 11 Event, 0N UserProfile
 Run, 1N Activity, 0N UserProfile
 Register, 0N Activity, 0N UserProfile
 Favorite, ON Activity, ON UserProfile
-Queue, 0N UserProfile, 0N Activity
+Queue, 0N UserProfile, 0N Activity: position
 
 Event: id, name, description, start, end
 Include, 0N Event, 11 Activity

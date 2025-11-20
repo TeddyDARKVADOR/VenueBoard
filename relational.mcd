@@ -17,7 +17,7 @@ Register: #id 1 > Activity > id, _#id 2 > UserProfile > id
 :
 Favorite: #id 1 > Activity > id, _#id 2 > UserProfile > id
 :
-Queue: #id 1 > UserProfile > id, _#id 2 > Activity > id
+Queue: #id 1 > UserProfile > id, _#id 2 > Activity > id, position
 :
 
 
