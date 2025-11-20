@@ -257,7 +257,7 @@ export class Repository {
     ) {
       throw new CustomError("LOGIC", HttpStatus.CONFLICT, "no remaining seats");
     }
-    this.canRegister(register);
+    await this.canRegister(register);
     const rows = (await this.sql`
     INSERT INTO register
     (user_profile_id, activity_id)
@@ -293,7 +293,7 @@ export class Repository {
           throw new CustomError(
             "LOGIC",
             HttpStatus.CONFLICT,
-            `this activity overlap your already registerd activity: '${curr.activity_name}'`,
+            `this activity overlap your already registered activity: '${curr.activity_name}'`,
           );
         }
       }
@@ -866,20 +866,21 @@ export class Repository {
         curr.seats_available,
         { id: curr.activity_id },
       );
-
       for (const id of user_profile_ids) {
         try {
-          this.createRegister({
+          await this.createRegister({
             user_profile_id: id,
             activity_id: curr.activity_id,
           });
         } catch (error) {
-          console.error(error);
-          continue;
+          const err = error as CustomError;
+          console.log(
+            `queue to register: user with id: '${id}' could not register: ${err.message}`,
+          );
         }
         await this.sql`
             DELETE FROM queue
-            WHERE user_profile_id = ${id} AND acitivity_id = ${curr.activity_id}`;
+            WHERE user_profile_id = ${id} AND activity_id = ${curr.activity_id}`;
       }
     }
   }

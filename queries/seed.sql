@@ -1,10 +1,10 @@
 BEGIN;
 
 INSERT INTO user_profile (user_profile_name, user_profile_role) VALUES
-  ('Alice Martin', 'staff'),
-  ('Bob Finch', 'speaker'),
-  ('Carol Dupont', 'staff'),
-  ('Dave Leroy', 'speaker');
+  ('Alice Martin', 'admin'),
+  ('Bob Finch', 'staff'),
+  ('Carol Dupont', 'speaker'),
+  ('Dave Leroy', 'guest');
 
 INSERT INTO user_auth (user_auth_login, user_auth_password, user_profile_id) VALUES
   ('alice.manager', 'password_alice_hash', 1),
@@ -17,9 +17,9 @@ INSERT INTO event (event_name, event_description, event_start, event_end, user_p
   ('University Open Day', 'Open day with lab tours and live demos', '2026-06-03 10:00:00+02', '2026-06-03 17:00:00+02', 1);
 
 INSERT INTO room (room_name, room_location, room_capacity) VALUES
-  ('Main Hall', 'Building A - Ground floor', 800),
-  ('Room 101', 'Building B - 1st floor', 120),
-  ('Demo Area', 'Building A - North Hall', 200);
+  ('Main Hall', 'Building A - Ground floor', 4),
+  ('Room 101', 'Building B - 1st floor', 3),
+  ('Demo Area', 'Building A - North Hall', 2);
 
 INSERT INTO activity (activity_name, activity_description, activity_start, activity_end, activity_real_start, activity_real_end, event_id, room_id) VALUES
   ('Keynote AI Futures', 'Opening keynote on AI trends', '2026-05-14 10:00:00+02', '2026-05-14 11:00:00+02', NULL, NULL, 1, 1),
@@ -37,7 +37,9 @@ INSERT INTO run (user_profile_id, activity_id) VALUES
 
 INSERT INTO register (user_profile_id, activity_id) VALUES
   (1, 2),
+  (2, 3),
   (3, 3),
+  (4, 2),
   (1, 4);
 
 INSERT INTO favorite (user_profile_id, activity_id) VALUES

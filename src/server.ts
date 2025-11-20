@@ -127,7 +127,8 @@ function start_web_server() {
       (req.method === "PUT" || req.method === "POST") &&
       !req.originalUrl.startsWith("/favorites") &&
       !req.originalUrl.startsWith("/runs") &&
-      !req.originalUrl.startsWith("/queues")
+      !req.originalUrl.startsWith("/queues") &&
+      !req.originalUrl.startsWith("/registers")
     ) {
       if (!req.body) {
         throw new CustomError(
@@ -643,6 +644,24 @@ function start_web_server() {
         activity_id: req.params.id,
       });
       return { position: queue.position, message: "deleted" };
+    },
+  );
+
+  web_server.get(
+    "/queues_to_register",
+    { preHandler: requireRoles(["admin"]) },
+    async (_req, res) => {
+      await repo.queueToRegister();
+      res.code(204);
+    },
+  );
+
+  web_server.get(
+    "/queues_positions",
+    { preHandler: requireRoles(["admin"]) },
+    async (_req, res) => {
+      await repo.cleanPosition();
+      res.code(204);
     },
   );
 
