@@ -117,7 +117,7 @@ export const ZQueue = z.object({
 export const ZQueueWithoutPos = ZQueue.omit({ position: true });
 
 export type Queue = z.infer<typeof ZQueue>;
-export type QueueWihtoutPos = z.infer<typeof ZQueue>;
+export type QueueWihtoutPos = z.infer<typeof ZQueueWithoutPos>;
 
 export const ZFavorite = z.object({
   user_profile_id: ZId,

@@ -123,7 +123,12 @@ function start_web_server() {
 
   web_server.addHook("preHandler", async (req) => {
     // method that needs a body
-    if (req.method === "PUT" || req.method === "POST") {
+    if (
+      (req.method === "PUT" || req.method === "POST") &&
+      !req.originalUrl.startsWith("/favorites") &&
+      !req.originalUrl.startsWith("/runs") &&
+      !req.originalUrl.startsWith("/queues")
+    ) {
       if (!req.body) {
         throw new CustomError(
           "REQUEST",
@@ -141,8 +146,17 @@ function start_web_server() {
           req.originalUrl === "/user_profiles")) ||
       req.originalUrl.startsWith("/token")
     ) {
-      req.claims = null;
-      return;
+      if (req.cookies.access_token) {
+        try {
+          req.claims = await tokenManager.verify(req.cookies.access_token);
+        } catch (error) {
+          console.log(
+            `tokenManager.verify() error with route : '${req.originalUrl}': ${error}`,
+          );
+        }
+      } else {
+        req.claims = null;
+      }
     }
 
     // set claims
@@ -461,6 +475,174 @@ function start_web_server() {
     async (req) => {
       await repo.deleteUserAuthById(req.params);
       return { message: "deleted" };
+    },
+  );
+
+  // ----- Register routes -----
+
+  web_server.post<{ Params: ObjectId }>(
+    "/registers/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "guest"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      await repo.createRegister({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { message: "registered" };
+    },
+  );
+
+  web_server.get("/registers", async () => {
+    return await repo.readAllRegister();
+  });
+
+  web_server.delete<{ Params: ObjectId }>(
+    "/registers/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "guest"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      await repo.deleteRegister({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { message: "deleted" };
+    },
+  );
+
+  // ----- Run routes -----
+
+  web_server.post<{ Params: ObjectId }>(
+    "/runs/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "speaker"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      await repo.createRun({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { message: "added" };
+    },
+  );
+
+  web_server.get("/runs", async () => {
+    return await repo.readAllRuns();
+  });
+
+  web_server.delete<{ Params: ObjectId }>(
+    "/runs/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "speaker"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      await repo.deleteRun({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { message: "deleted" };
+    },
+  );
+
+  // ----- Favorite routes -----
+
+  web_server.post<{ Params: ObjectId }>(
+    "/favorites/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "staff", "speaker", "guest"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      await repo.createFavorite({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { message: "added" };
+    },
+  );
+
+  web_server.get("/favorites", async () => {
+    return await repo.readAllFavorites();
+  });
+
+  web_server.delete<{ Params: ObjectId }>(
+    "/favorites/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "staff", "speaker", "guest"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      await repo.deleteFavorite({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { message: "deleted" };
+    },
+  );
+
+  // ----- Queue routes -----
+
+  web_server.post<{ Params: ObjectId }>(
+    "/queues/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "guest"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      const queue = await repo.createQueue({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { position: queue.position, message: "added" };
+    },
+  );
+
+  web_server.get("/queues", async () => {
+    return await repo.readAllQueues();
+  });
+
+  web_server.delete<{ Params: ObjectId }>(
+    "/queues/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "guest"]),
+    },
+    async (req) => {
+      if (!req.claims) {
+        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
+      }
+      const queue = await repo.deleteQueue({
+        user_profile_id: req.claims.sub,
+        activity_id: req.params.id,
+      });
+      return { position: queue.position, message: "deleted" };
     },
   );
 
