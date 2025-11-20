@@ -1,23 +1,28 @@
 %%mocodo
+:::::
+UserAuth: id, login, password
+:::::
+
+
+
+:::::
+UserProfile: id, name, role, favorites, #id 2 > UserAuth > id
+:::::
+
+
 :::
-User_Auth: id, login, password
-:::::::
-
-
-:::::
-User_Profile: id, name, role, #id 2 > User_Auth > id
-:::::
-
-
-:::::
-Run: #id 1 > Activity > id, _#id 2 > User_Profile > id
+Run: #id 1 > Activity > id, _#id 2 > UserProfile > id
 :
-Register: #id 1 > Activity > id, _#id 2 > User_Profile > id
-:::
+Register: #id 1 > Activity > id, _#id 2 > UserProfile > id
+:
+Favorite: #id 1 > Activity > id, _#id 2 > UserProfile > id
+:
+Queue: #id 1 > UserProfile > id, _#id 2 > Activity > id
+:
 
 
 :
-Event: id, name, description, start, end, #id 2 > User_Profile > id
+Event: id, name, description, start, end, #id 2 > UserProfile > id
 :::
 Activity: id, name, description, start, end, real_start, real_end, #id 2 > Event > id, #id 3 > Room > id
 :::
