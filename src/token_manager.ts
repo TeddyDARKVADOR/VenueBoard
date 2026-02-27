@@ -77,10 +77,9 @@ export function requireRoles(
     if (!req.claims) {
       throw new CustomError("TOKEN", HttpStatus.UNAUTHORIZED, "unauthorized");
     }
-    if (!roles.find((curr) => curr === req.claims?.role)) {
+    if (!roles.includes(req.claims?.role)) {
       throw new CustomError("REQUEST", HttpStatus.FORBIDDEN, "forbidden");
     }
-    return;
   };
 }
 
