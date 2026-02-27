@@ -1,5 +1,5 @@
-import argon2 from "argon2";
-import postgres from "postgres";
+import * as argon2 from "argon2";
+import postgres = require("postgres");
 import { CustomError } from "./custom_error.js";
 import type * as model from "./models.js";
 import { HttpStatus } from "./models.js";

@@ -1,7 +1,7 @@
 import fastifyCookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import { addHours } from "date-fns";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 import Fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
