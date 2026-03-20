@@ -25,7 +25,8 @@ function AppRoutes() {
   }
 
   return (
-    <>
+    <div className="app-shell">
+      <BottomNav />
       <div className="app-content">
         <Routes>
           <Route path="/" element={<ProgrammePage />} />
@@ -36,8 +37,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      <BottomNav />
-    </>
+    </div>
   );
 }
 

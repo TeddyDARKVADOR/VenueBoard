@@ -1,76 +1,27 @@
-# VenueBoard - Backend API
+# VenueBoard
 
-## Description
+## 1. Présentation du projet
 
-VenueBoard est une solution de gestion d'événements en temps réel (salons, JPO, conférences). Elle permet de centraliser les informations sur les activités, de gérer les retards, les salles, et d'offrir aux visiteurs des fonctionnalités interactives comme des files d'attente virtuelles et des inscriptions.
+VenueBoard est une application web de gestion d'événements et de conférences, conçue en mobile-first avec une adaptation desktop complète. Le backend est une API REST construite avec Fastify, TypeScript et PostgreSQL, exposant des routes pour les utilisateurs, activités, salles, files d'attente et favoris. Le frontend est une SPA React avec React Router, qui communique avec l'API via un proxy Vite et gère l'authentification par cookies JWT.
 
-## Fonctionnalités Backend (Actuelles)
+## 2. Démarrage rapide
 
-L'API est développée avec **Fastify**, **TypeScript**, et **PostgreSQL**. Elle inclut déjà :
+Le backend utilise Docker pour PostgreSQL et un script de démarrage automatisé. Le frontend est servi par Vite en développement avec un proxy vers le backend.
 
-### 🔐 Sécurité & Authentification
+```bash
+# Backend (démarre Docker + seed + serveur sur :1234)
+cd backend
+pnpm install
+pnpm dev
 
-- **Authentification JWT** : Gestion des tokens via cookies sécurisés.
-- **Gestion des Rôles** : `admin`, `staff`, `speaker`, `guest` avec des permissions spécifiques.
-- **Validation Globale** : Utilisation de **Zod** pour la validation des schémas de données.
+# Frontend (démarre Vite sur :5173)
+cd frontend
+npm install
+npm run dev
+```
 
-### 📅 Gestion des Événements & Activités
+Comptes de test après seed : `admin` / `admin123`, `thomas` / `guest123`, `sophie` / `guest456`.
 
-- **CRUD Événements** : Création, lecture, mise à jour et suppression d'événements.
-- **CRUD Activités** : Gestion détaillée des sessions (horaires prévus vs réels, description, salle).
-- **Lien Événement/Activités** : Récupération d'un événement avec toutes ses activités liées.
+## 3. Fonctionnalités à venir
 
-### 👥 Gestion des Utilisateurs
-
-- **Profils Utilisateurs** : Gestion des informations publiques et des rôles.
-- **Authentification** : Gestion des identifiants et mots de passe (avec hachage prévu).
-
-### 🛠️ Fonctionnalités Interactives
-
-- **Inscriptions (Registers)** : Permet aux visiteurs de s'inscrire à une activité.
-- **Favoris (Favorites)** : Permet de marquer des activités pour les retrouver facilement.
-- **Intervenants (Runs)** : Permet de lier un intervenant à une activité qu'il anime.
-- **File d'Attente Virtuelle (Queues)** : Système de positionnement pour les activités à capacité limitée, avec transfert automatique vers les inscriptions.
-
-### 🏢 Infrastructure (Rooms)
-
-- **Gestion des Salles** : Localisation et capacité des salles.
-
----
-
-## Plan d'Action pour l'implémentation Frontend (ReactJS)
-
-Pour transformer ce backend en une application complète, voici les étapes recommandées :
-
-### 1. 🏗️ Architecture & Setup
-
-- Initialiser un projet **React** (avec Vite).
-- Configurer les outils de style (Tailwind CSS recommandé pour la rapidité et le zoning).
-- Mettre en place un client API (Axios ou SDK natif) avec gestion des cookies/credentials.
-- Configurer les routes (React Router).
-
-### 2. 👤 Authentification & Espace Utilisateur
-
-- **Page Login** : Formulaire de connexion.
-- **Contexte Auth** : Maintenir l'état de l'utilisateur (rôle, ID) à travers l'app.
-- **Profil** : Consultation et modification des informations de base.
-
-### 3. 🖥️ Affichages Publics (Contextuels)
-
-- **Vue Hall** : Liste globale de toutes les activités de la journée (façon tableau de gare).
-- **Vue Salle** : Affichage spécifique à une salle (Activité en cours + Suivante).
-
-### 4. 📱 Application Visiteur (Mobile-first)
-
-- **Programme Interactif** : Liste des activités avec filtres par événement/salle.
-- **Détails Activité** : Description, intervenant, et boutons d'action (S'inscrire / Favori / Rejoindre la file).
-- **Ma File d'Attente** : Voir sa position en temps réel et notification (simulée ou via signal).
-
-### 5. 🛠️ Interface Administration / Staff / Intervenant
-
-- **Dashboard Admin** : CRUD complet pour les événements, activités et utilisateurs.
-- **Mode Intervenant** : Page dédiée pour valider le début/fin d'une session et déclarer un retard.
-
-### 6. 🔄 Interaction Temps Réel (Bonus/Amélioration)
-
-- Actuellement l'API est REST. Pour une réactivité optimale du Frontend (changements de salle, retards), il serait intéressant d'ajouter des **WebSockets** ou du **Polling** régulier sur les statuts d'activités.
+Les administrateurs auront accès à un tableau de bord pour créer, modifier et supprimer des événements, activités et salles, ainsi que gérer les rôles des utilisateurs. Le staff disposera d'outils pour valider les inscriptions, scanner les entrées des participants et gérer les files d'attente en temps réel. Ces fonctionnalités seront accessibles via des pages dédiées protégées par rôle, invisibles pour les participants classiques.

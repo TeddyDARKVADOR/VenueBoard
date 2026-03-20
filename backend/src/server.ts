@@ -162,6 +162,7 @@ function start_web_server() {
       } else {
         req.claims = null;
       }
+      return;
     }
 
     // set claims

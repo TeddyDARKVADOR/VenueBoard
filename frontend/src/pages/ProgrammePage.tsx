@@ -224,6 +224,7 @@ export default function ProgrammePage() {
         </div>
       )}
 
+      <div className="activity-grid">
       {filtered.map((activity) => {
         const cat = getCategory(activity.activity_name);
         const room = roomMap.get(activity.room_id);
@@ -232,12 +233,14 @@ export default function ProgrammePage() {
         const capacity = room?.room_capacity ?? 0;
         const pct = capacity > 0 ? (count / capacity) * 100 : 0;
         const isFav = myFavorites.has(activity.activity_id);
+        const isPast = new Date(activity.activity_end) < new Date();
 
         return (
           <div
             key={activity.activity_id}
-            className="activity-card"
-            onClick={() => navigate(`/activity/${activity.activity_id}`)}
+            className={`activity-card${isPast ? " past" : ""}`}
+            data-category={cat}
+            onClick={() => !isPast && navigate(`/activity/${activity.activity_id}`)}
           >
             <div className="activity-card-header">
               <span className="activity-time">
@@ -257,6 +260,7 @@ export default function ProgrammePage() {
             <div className="activity-title">{activity.activity_name}</div>
             {speaker && <div className="activity-speaker">{speaker}</div>}
             <span className={getBadgeClass(cat)}>{getCategoryLabel(cat)}</span>
+            {isPast && <span className="badge badge-past">Terminée</span>}
             {room && (
               <div className="capacity-bar">
                 <div className="capacity-bar-text">
@@ -273,6 +277,7 @@ export default function ProgrammePage() {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

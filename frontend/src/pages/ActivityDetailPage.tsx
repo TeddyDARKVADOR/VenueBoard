@@ -168,6 +168,9 @@ export default function ActivityDetailPage() {
         activity_id: activity.activity_id,
       },
     ]);
+    // Refresh registers in case joining queue auto-registered us
+    const regResp = await client.get("/registers");
+    setRegisters(regResp.data);
   };
 
   const leaveQueue = async () => {
@@ -189,6 +192,8 @@ export default function ActivityDetailPage() {
 
   const cat = getCategory(activity.activity_name);
   const capacity = room?.room_capacity ?? 0;
+  const remaining = Math.max(capacity - registerCount, 0);
+  const isPast = new Date(activity.activity_end) < new Date();
 
   return (
     <div className="page">
@@ -196,7 +201,7 @@ export default function ActivityDetailPage() {
         ← Retour
       </button>
 
-      <div className="detail-header-image" />
+      <div className={`detail-header-image ${cat}`} />
 
       <div className="detail-category">
         <span className={getBadgeClass(cat)}>{getCategoryLabel(cat)}</span>
@@ -222,11 +227,11 @@ export default function ActivityDetailPage() {
       <div className="detail-capacity">
         <div className="capacity-bar">
           <div className="capacity-bar-text">
-            {registerCount}/{capacity} places restantes
+            {remaining}/{capacity} places restantes
           </div>
           <div className="capacity-bar-track">
             <div
-              className={`capacity-bar-fill${registerCount >= capacity ? " full" : ""}`}
+              className={`capacity-bar-fill${remaining === 0 ? " full" : ""}`}
               style={{
                 width: `${capacity > 0 ? Math.min((registerCount / capacity) * 100, 100) : 0}%`,
               }}
@@ -256,7 +261,13 @@ export default function ActivityDetailPage() {
         </>
       )}
 
-      {!isRegistered && (
+      {isPast ? (
+        <div className="detail-action">
+          <button className="btn btn-outline btn-full" disabled>
+            Activité terminée
+          </button>
+        </div>
+      ) : !isRegistered ? (
         <div className="detail-action">
           {myQueue ? (
             <button
@@ -274,9 +285,7 @@ export default function ActivityDetailPage() {
             </button>
           )}
         </div>
-      )}
-
-      {isRegistered && (
+      ) : (
         <div className="detail-action">
           <button className="btn btn-outline btn-full" disabled>
             Déjà inscrit ✓
