@@ -1,5 +1,5 @@
 import * as argon2 from "argon2";
-import postgres = require("postgres");
+import postgres from "postgres";
 import { CustomError } from "./custom_error.js";
 import type * as model from "./models.js";
 import { HttpStatus } from "./models.js";
@@ -81,7 +81,7 @@ export class Repository {
       SET
       user_auth_login = COALESCE(${login}, user_auth_login),
       user_auth_password = COALESCE(${hash}, user_auth_password),
-      user_profil_id = COALESCE(${ref}, user_profile_id)
+      user_profile_id = COALESCE(${ref}, user_profile_id)
       WHERE user_auth_id = ${id}
       RETURNING user_auth_id, user_auth_login`) as model.UserAuthWithoutPassword[];
     if (rows.length === 0) {
@@ -125,8 +125,8 @@ export class Repository {
         "user_auth",
       );
     }
-    const password = this.normalizePassword(rows[0].user_auth_password);
-    if (await argon2.verify(password, user.user_auth_password)) {
+    const password = this.normalizePassword(user.user_auth_password);
+    if (await argon2.verify(rows[0].user_auth_password, password)) {
       return rows[0].user_profile_id;
     }
     return null;
@@ -805,7 +805,7 @@ export class Repository {
   // ----- Queue -----
 
   async createQueue(queue: model.QueueWihtoutPos) {
-    this.canRegister(queue as model.Register);
+    await this.canRegister(queue as model.Register);
     const position = await this.getNextPositionForActivityId({
       id: queue.activity_id,
     });

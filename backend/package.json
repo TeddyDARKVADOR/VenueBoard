@@ -17,15 +17,20 @@
     "@biomejs/biome": "^2.2.6",
     "@tsconfig/node22": "^22.0.2",
     "@types/node": "^24.9.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.8"
   },
   "scripts": {
+    "dev": "tsx src/server.ts",
     "build": "tsc",
     "lint": "biome lint",
     "format": "biome format --write",
     "autofix": "biome check --write",
     "test": "vitest",
-    "tr": "vitest run"
+    "tr": "vitest run",
+    "db:fake": "tsx src/seed.ts",
+    "dev:server": "tsx src/server.ts",
+    "dev": "tsx src/dev.ts"
   }
 }

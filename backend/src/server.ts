@@ -24,9 +24,13 @@ import {
   type UserAuthLogin,
   type UserAuthWithoutId,
   type UserProfileWithoutId,
+  type RoomWithoutId,
+  type PartialRoomWithoutId,
   ZActivityWithoutId,
   ZEventWithoutId,
   ZObjectId,
+  ZRoomWithoutId,
+  ZPartialRoomWithoutId,
   ZPartialActivityWithoutId,
   ZPartialEventWithoutId,
   ZPartialUserAuthWithoutId,
@@ -53,7 +57,7 @@ function start_web_server() {
   web_server.setSerializerCompiler(serializerCompiler);
   web_server.register(fastifyCookie, {});
   web_server.register(cors, {
-    origin: "http://localhost:1234",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -89,7 +93,7 @@ function start_web_server() {
         case "23503":
           reply.code(404);
           break;
-        case "23505	":
+        case "23505":
           reply.code(409);
           break;
         default:
@@ -184,8 +188,8 @@ function start_web_server() {
       );
       res
         .setCookie("access_token", token, {
-          secure: true,
-          sameSite: false,
+          secure: false,
+          sameSite: "lax",
           path: "/",
           expires: addHours(new Date(), 1),
         })
@@ -410,8 +414,9 @@ function start_web_server() {
         false,
       );
       res.setCookie("access_token", token, {
-        secure: true,
-        sameSite: false,
+        secure: false,
+        sameSite: "lax",
+        path: "/",
         expires: addHours(new Date(), 1),
       });
       res.status(204);
@@ -475,6 +480,56 @@ function start_web_server() {
     },
     async (req) => {
       await repo.deleteUserAuthById(req.params);
+      return { message: "deleted" };
+    },
+  );
+
+  // ----- Room routes -----
+
+  web_server.post<{ Body: RoomWithoutId }>(
+    "/rooms",
+    {
+      schema: { body: ZRoomWithoutId },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
+    async (req) => {
+      const room = await repo.createRoom(req.body);
+      return { room_id: room.room_id, message: "created" };
+    },
+  );
+
+  web_server.get("/rooms", async () => {
+    return await repo.readAllRooms();
+  });
+
+  web_server.get<{ Params: ObjectId }>(
+    "/rooms/:id",
+    { schema: { params: ZObjectId } },
+    async (req) => {
+      return await repo.readRoomById(req.params);
+    },
+  );
+
+  web_server.put<{ Params: ObjectId; Body: PartialRoomWithoutId }>(
+    "/rooms/:id",
+    {
+      schema: { params: ZObjectId, body: ZPartialRoomWithoutId },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
+    async (req) => {
+      const room = await repo.updateRoomById(req.params, req.body);
+      return { room_id: room.room_id, message: "updated" };
+    },
+  );
+
+  web_server.delete<{ Params: ObjectId }>(
+    "/rooms/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
+    async (req) => {
+      await repo.deleteRoomById(req.params);
       return { message: "deleted" };
     },
   );
