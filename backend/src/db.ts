@@ -1,16 +1,9 @@
 import * as argon2 from "argon2";
 import postgres from "postgres";
+import { ARGON2OPTS } from "./argon2_config.js";
 import { CustomError } from "./custom_error.js";
 import type * as model from "./models.js";
 import { HttpStatus } from "./models.js";
-
-const ARGON2OPTS = {
-  type: argon2.argon2id,
-  memoryCost: 19456,
-  timeCost: 2,
-  parallelism: 1,
-  hashLength: 32,
-};
 
 export class Repository {
   sql: postgres.Sql;
@@ -281,21 +274,16 @@ export class Repository {
       await this.readAllRegisteredActivitiesByUserProfileId({
         id: register.user_profile_id,
       });
-    if (registered_activities.length > 0) {
-      const act_end = activity.activity_real_end ?? activity.activity_end;
-      for (const curr of registered_activities) {
-        const curr_start = curr.activity_real_start ?? curr.activity_start;
-        const curr_end = curr.activity_real_end ?? curr.activity_end;
-        if (
-          (act_start >= curr_start && act_start <= curr_end) ||
-          (act_end <= curr_end && act_end >= curr_start)
-        ) {
-          throw new CustomError(
-            "LOGIC",
-            HttpStatus.CONFLICT,
-            `this activity overlap your already registered activity: '${curr.activity_name}'`,
-          );
-        }
+    const act_end = activity.activity_real_end ?? activity.activity_end;
+    for (const curr of registered_activities) {
+      const curr_start = curr.activity_real_start ?? curr.activity_start;
+      const curr_end = curr.activity_real_end ?? curr.activity_end;
+      if (act_start < curr_end && act_end > curr_start) {
+        throw new CustomError(
+          "LOGIC",
+          HttpStatus.CONFLICT,
+          `this activity overlap your already registered activity: '${curr.activity_name}'`,
+        );
       }
     }
   }
@@ -804,7 +792,7 @@ export class Repository {
 
   // ----- Queue -----
 
-  async createQueue(queue: model.QueueWihtoutPos) {
+  async createQueue(queue: model.QueueWithoutPos) {
     await this.canRegister(queue as model.Register);
     const position = await this.getNextPositionForActivityId({
       id: queue.activity_id,
@@ -825,7 +813,7 @@ export class Repository {
     return rows;
   }
 
-  async deleteQueue(queue: model.QueueWihtoutPos) {
+  async deleteQueue(queue: model.QueueWithoutPos) {
     const rows = (await this.sql`
       DELETE FROM queue
       WHERE user_profile_id = ${queue.user_profile_id}

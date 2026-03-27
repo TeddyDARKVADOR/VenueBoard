@@ -10,8 +10,8 @@ export type ObjectId = z.infer<typeof ZObjectId>;
 
 export const ZUserAuth = z.object({
   user_auth_id: ZId,
-  user_auth_login: z.string(),
-  user_auth_password: z.string(),
+  user_auth_login: z.string().min(1).max(255),
+  user_auth_password: z.string().min(1).max(255),
   user_profile_id: ZId,
 });
 export const ZUserAuthWithoutId = ZUserAuth.omit({ user_auth_id: true });
@@ -33,7 +33,7 @@ export type UserAuthWithoutPassword = z.infer<typeof ZUserAuthWithoutPassword>;
 
 export const ZUserProfile = z.object({
   user_profile_id: ZId,
-  user_profile_name: z.string(),
+  user_profile_name: z.string().min(1).max(255),
   user_profile_role: z.enum(["admin", "staff", "speaker", "guest"]),
 });
 export const ZUserProfileWithoutId = ZUserProfile.omit({
@@ -56,8 +56,8 @@ export type Register = z.infer<typeof ZRegister>;
 
 export const ZEvent = z.object({
   event_id: ZId,
-  event_name: z.string(),
-  event_description: z.string(),
+  event_name: z.string().min(1).max(255),
+  event_description: z.string().min(1).max(2000),
   event_start: z.coerce.date(),
   event_end: z.coerce.date(),
   user_profile_id: ZId,
@@ -71,8 +71,8 @@ export type PartialEventWithoutId = z.infer<typeof ZPartialEventWithoutId>;
 
 export const ZActivity = z.object({
   activity_id: ZId,
-  activity_name: z.string(),
-  activity_description: z.string(),
+  activity_name: z.string().min(1).max(255),
+  activity_description: z.string().min(1).max(2000),
   activity_start: z.coerce.date(),
   activity_end: z.coerce.date(),
   activity_real_start: z.coerce.date().nullable(),
@@ -91,8 +91,8 @@ export type PartialActivityWithoutId = z.infer<
 
 export const ZRoom = z.object({
   room_id: ZId,
-  room_name: z.string(),
-  room_location: z.string(),
+  room_name: z.string().min(1).max(255),
+  room_location: z.string().min(1).max(255),
   room_capacity: ZId,
 });
 export const ZRoomWithoutId = ZRoom.omit({ room_id: true });
@@ -117,7 +117,7 @@ export const ZQueue = z.object({
 export const ZQueueWithoutPos = ZQueue.omit({ position: true });
 
 export type Queue = z.infer<typeof ZQueue>;
-export type QueueWihtoutPos = z.infer<typeof ZQueueWithoutPos>;
+export type QueueWithoutPos = z.infer<typeof ZQueueWithoutPos>;
 
 export const ZFavorite = z.object({
   user_profile_id: ZId,

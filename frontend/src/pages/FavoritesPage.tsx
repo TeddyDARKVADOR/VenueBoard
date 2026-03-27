@@ -1,67 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import client from "../api/client";
+import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-
-interface Activity {
-  activity_id: number;
-  activity_name: string;
-  activity_description: string;
-  activity_start: string;
-  activity_end: string;
-  room_id: number;
-}
-
-interface Favorite {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface Run {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface UserProfile {
-  user_profile_id: number;
-  user_profile_name: string;
-}
-
-function getCategory(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.includes("workshop") || lower.includes("atelier"))
-    return "atelier";
-  if (lower.includes("networking") || lower.includes("pause"))
-    return "networking";
-  return "conference";
-}
-
-function getCategoryLabel(cat: string): string {
-  switch (cat) {
-    case "atelier":
-      return "Atelier";
-    case "networking":
-      return "Networking";
-    default:
-      return "Conférence";
-  }
-}
-
-function getBadgeClass(cat: string): string {
-  switch (cat) {
-    case "atelier":
-      return "badge badge-atelier";
-    case "networking":
-      return "badge badge-networking";
-    default:
-      return "badge badge-conference";
-  }
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
+import type { Activity, Favorite, Run, UserProfile } from "../types";
+import { formatTime, getBadgeClass, getCategory, getCategoryLabel } from "../utils";
 
 export default function FavoritesPage() {
   const { claims } = useAuth();
@@ -72,6 +14,7 @@ export default function FavoritesPage() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -84,7 +27,7 @@ export default function FavoritesPage() {
       setFavorites(f.data);
       setRuns(r.data);
       setProfiles(p.data);
-    });
+    }).catch((err) => setError(getErrorMessage(err)));
   }, []);
 
   const profileMap = useMemo(
@@ -160,6 +103,7 @@ export default function FavoritesPage() {
         <h1>Mes favoris</h1>
         <span className="fav-total-count">{myFavIds.length}</span>
       </div>
+      {error && <div className="error-msg">{error}</div>}
 
       <div className="tabs">
         <button

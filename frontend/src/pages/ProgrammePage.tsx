@@ -1,81 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import client from "../api/client";
+import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-
-interface Activity {
-  activity_id: number;
-  activity_name: string;
-  activity_description: string;
-  activity_start: string;
-  activity_end: string;
-  room_id: number;
-}
-
-interface Room {
-  room_id: number;
-  room_name: string;
-  room_capacity: number;
-}
-
-interface Run {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface UserProfile {
-  user_profile_id: number;
-  user_profile_name: string;
-  user_profile_role: string;
-}
-
-interface Favorite {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface Register {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-type Category = "all" | "conference" | "atelier" | "networking";
-
-function getCategory(name: string): Exclude<Category, "all"> {
-  const lower = name.toLowerCase();
-  if (lower.includes("workshop") || lower.includes("atelier"))
-    return "atelier";
-  if (lower.includes("networking") || lower.includes("pause"))
-    return "networking";
-  return "conference";
-}
-
-function getCategoryLabel(cat: Exclude<Category, "all">): string {
-  switch (cat) {
-    case "conference":
-      return "Conférence";
-    case "atelier":
-      return "Atelier";
-    case "networking":
-      return "Networking";
-  }
-}
-
-function getBadgeClass(cat: Exclude<Category, "all">): string {
-  switch (cat) {
-    case "conference":
-      return "badge badge-conference";
-    case "atelier":
-      return "badge badge-atelier";
-    case "networking":
-      return "badge badge-networking";
-  }
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
+import type { Activity, Category, Favorite, Register, Room, Run, UserProfile } from "../types";
+import { formatTime, getBadgeClass, getCategory, getCategoryLabel } from "../utils";
 
 export default function ProgrammePage() {
   const { claims } = useAuth();
@@ -89,6 +17,7 @@ export default function ProgrammePage() {
   const [registers, setRegisters] = useState<Register[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Category>("all");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -105,7 +34,7 @@ export default function ProgrammePage() {
       setProfiles(p.data);
       setFavorites(f.data);
       setRegisters(reg.data);
-    });
+    }).catch((err) => setError(getErrorMessage(err)));
   }, []);
 
   const roomMap = useMemo(
@@ -195,6 +124,7 @@ export default function ProgrammePage() {
   return (
     <div className="page">
       <h1 className="page-title">Programme</h1>
+      {error && <div className="error-msg">{error}</div>}
 
       <div className="search-bar">
         <span className="search-icon">🔍</span>

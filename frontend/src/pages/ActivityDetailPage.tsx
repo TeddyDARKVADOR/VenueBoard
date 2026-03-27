@@ -1,89 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import client from "../api/client";
+import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-
-interface Activity {
-  activity_id: number;
-  activity_name: string;
-  activity_description: string;
-  activity_start: string;
-  activity_end: string;
-  room_id: number;
-}
-
-interface Room {
-  room_id: number;
-  room_name: string;
-  room_capacity: number;
-}
-
-interface Run {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface UserProfile {
-  user_profile_id: number;
-  user_profile_name: string;
-  user_profile_role: string;
-}
-
-interface Register {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface Queue {
-  position: number;
-  user_profile_id: number;
-  activity_id: number;
-}
-
-function getCategory(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.includes("workshop") || lower.includes("atelier"))
-    return "atelier";
-  if (lower.includes("networking") || lower.includes("pause"))
-    return "networking";
-  return "conference";
-}
-
-function getCategoryLabel(cat: string): string {
-  switch (cat) {
-    case "atelier":
-      return "Atelier";
-    case "networking":
-      return "Networking";
-    default:
-      return "Conférence";
-  }
-}
-
-function getBadgeClass(cat: string): string {
-  switch (cat) {
-    case "atelier":
-      return "badge badge-atelier";
-    case "networking":
-      return "badge badge-networking";
-    default:
-      return "badge badge-conference";
-  }
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
+import type { Activity, Queue, Register, Room, Run, UserProfile } from "../types";
+import { formatDate, formatTime, getBadgeClass, getCategory, getCategoryLabel } from "../utils";
 
 export default function ActivityDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -97,6 +17,7 @@ export default function ActivityDetailPage() {
   const [registers, setRegisters] = useState<Register[]>([]);
   const [queues, setQueues] = useState<Queue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -115,6 +36,9 @@ export default function ActivityDetailPage() {
       setQueues(q.data);
       const roomResp = await client.get(`/rooms/${act.room_id}`);
       setRoom(roomResp.data);
+      setLoading(false);
+    }).catch((err) => {
+      setError(getErrorMessage(err));
       setLoading(false);
     });
   }, [id]);
@@ -187,6 +111,7 @@ export default function ActivityDetailPage() {
     );
   };
 
+  if (error) return <div className="page error-msg">{error}</div>;
   if (loading || !activity)
     return <div className="loading-screen">Chargement...</div>;
 

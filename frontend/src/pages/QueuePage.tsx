@@ -1,24 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import client from "../api/client";
+import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-
-interface Activity {
-  activity_id: number;
-  activity_name: string;
-  activity_start: string;
-  activity_end: string;
-}
-
-interface Queue {
-  position: number;
-  user_profile_id: number;
-  activity_id: number;
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
+import type { Activity, Queue } from "../types";
+import { formatTime } from "../utils";
 
 export default function QueuePage() {
   const { claims } = useAuth();
@@ -26,6 +10,7 @@ export default function QueuePage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [queues, setQueues] = useState<Queue[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([client.get("/activities"), client.get("/queues")]).then(
@@ -33,7 +18,7 @@ export default function QueuePage() {
         setActivities(a.data);
         setQueues(q.data);
       },
-    );
+    ).catch((err) => setError(getErrorMessage(err)));
   }, []);
 
   const activityMap = useMemo(
@@ -94,6 +79,7 @@ export default function QueuePage() {
           {activeQueues.length}
         </span>
       </div>
+      {error && <div className="error-msg">{error}</div>}
 
       {first && firstActivity ? (
         <div className="queue-position-card">

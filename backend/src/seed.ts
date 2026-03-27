@@ -1,16 +1,9 @@
 import * as argon2 from "argon2";
 import * as dotenv from "dotenv";
 import postgres from "postgres";
+import { ARGON2OPTS } from "./argon2_config.js";
 
 dotenv.config();
-
-const ARGON2OPTS = {
-  type: argon2.argon2id,
-  memoryCost: 19456,
-  timeCost: 2,
-  parallelism: 1,
-  hashLength: 32,
-};
 
 async function seed() {
   const sql = postgres({

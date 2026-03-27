@@ -22,7 +22,7 @@
     "vitest": "^4.0.8"
   },
   "scripts": {
-    "dev": "tsx src/server.ts",
+    "dev:server": "tsx src/server.ts",
     "build": "tsc",
     "lint": "biome lint",
     "format": "biome format --write",
@@ -30,7 +30,6 @@
     "test": "vitest",
     "tr": "vitest run",
     "db:fake": "tsx src/seed.ts",
-    "dev:server": "tsx src/server.ts",
     "dev": "tsx src/dev.ts"
   }
 }

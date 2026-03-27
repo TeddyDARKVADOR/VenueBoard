@@ -2,28 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
-
-interface UserProfile {
-  user_profile_id: number;
-  user_profile_name: string;
-  user_profile_role: string;
-}
-
-interface Register {
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface Queue {
-  position: number;
-  user_profile_id: number;
-  activity_id: number;
-}
-
-interface Favorite {
-  user_profile_id: number;
-  activity_id: number;
-}
+import type { Favorite, Queue, Register, UserProfile } from "../types";
 
 function roleLabel(role: string): string {
   switch (role) {
