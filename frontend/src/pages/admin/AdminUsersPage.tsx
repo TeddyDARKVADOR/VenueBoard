@@ -69,7 +69,7 @@ export default function AdminUsersPage() {
       <button className="detail-back" type="button" onClick={() => navigate("/admin")}>
         ← Admin
       </button>
-      <h1 className="page-title">👥 Utilisateurs</h1>
+      <h1 className="page-title"> Utilisateurs</h1>
       {error && <div className="error-msg" role="alert">{error}</div>}
 
       <div className="admin-filters">

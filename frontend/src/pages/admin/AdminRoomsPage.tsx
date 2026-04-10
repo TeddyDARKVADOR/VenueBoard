@@ -104,7 +104,7 @@ export default function AdminRoomsPage() {
         ← Admin
       </button>
       <div className="admin-page-header">
-        <h1 className="page-title">🏛️ Salles</h1>
+        <h1 className="page-title"> Salles</h1>
         <button type="button" className="btn btn-primary" onClick={openCreate}>
           + Nouveau
         </button>
