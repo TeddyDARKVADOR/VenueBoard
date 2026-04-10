@@ -132,7 +132,7 @@ export default function AdminActivitiesPage() {
         ← Admin
       </button>
       <div className="admin-page-header">
-        <h1 className="page-title">🎤 Activités</h1>
+        <h1 className="page-title"> Activités</h1>
         <button type="button" className="btn btn-primary" onClick={openCreate}>
           + Nouveau
         </button>
