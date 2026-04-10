@@ -119,7 +119,7 @@ export default function AdminEventsPage() {
         ← Admin
       </button>
       <div className="admin-page-header">
-        <h1 className="page-title">🗓️ Événements</h1>
+        <h1 className="page-title"> Événements</h1>
         <button type="button" className="btn btn-primary" onClick={openCreate}>
           + Nouveau
         </button>
@@ -208,7 +208,7 @@ export default function AdminEventsPage() {
             </div>
             <div className="admin-list-item-actions">
               <button type="button" className="btn-icon" onClick={() => openEdit(ev)} aria-label="Modifier">
-                ✏️
+                
               </button>
               <button
                 type="button"
@@ -216,7 +216,7 @@ export default function AdminEventsPage() {
                 onClick={() => setDeleteId(ev.event_id)}
                 aria-label="Supprimer"
               >
-                🗑️
+                
               </button>
             </div>
           </div>

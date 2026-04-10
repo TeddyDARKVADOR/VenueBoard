@@ -242,7 +242,7 @@ export default function AdminActivitiesPage() {
               </div>
               <div className="admin-list-item-actions">
                 <button type="button" className="btn-icon" onClick={() => openEdit(act)} aria-label="Modifier">
-                  ✏️
+                  
                 </button>
                 <button
                   type="button"
@@ -250,7 +250,7 @@ export default function AdminActivitiesPage() {
                   onClick={() => setDeleteId(act.activity_id)}
                   aria-label="Supprimer"
                 >
-                  🗑️
+                  
                 </button>
               </div>
             </div>

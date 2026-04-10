@@ -3,10 +3,10 @@ import { useAuth } from "../contexts/AuthContext";
 import ThemeToggle from "./ThemeToggle";
 
 const guestTabs = [
-  { path: "/", label: "Programme", icon: "📅" },
-  { path: "/favorites", label: "Favoris", icon: "⭐" },
-  { path: "/queue", label: "File", icon: "⏳" },
-  { path: "/profile", label: "Profil", icon: "👤" },
+  { path: "/", label: "Programme", icon: "" },
+  { path: "/favorites", label: "Favoris", icon: "" },
+  { path: "/queue", label: "File", icon: "" },
+  { path: "/profile", label: "Profil", icon: "" },
 ];
 
 export default function BottomNav() {
@@ -24,8 +24,8 @@ export default function BottomNav() {
 
   const tabs = [
     ...guestTabs,
-    ...(isStaff ? [{ path: "/staff", label: "Staff", icon: "🔧" }] : []),
-    ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: "⚙️" }] : []),
+    ...(isStaff ? [{ path: "/staff", label: "Staff", icon: "" }] : []),
+    ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: "" }] : []),
   ];
 
   return (

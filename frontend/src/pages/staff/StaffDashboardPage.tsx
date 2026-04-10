@@ -39,13 +39,13 @@ export default function StaffDashboardPage() {
   const sections = [
     {
       label: "Scanner les entrées",
-      icon: "🎫",
+      icon: "",
       path: "/staff/scan",
       description: "Valider les inscriptions et cocher les participants",
     },
     {
       label: "Files d'attente",
-      icon: "⏳",
+      icon: "",
       path: "/staff/queue",
       description: "Gérer et promouvoir les files d'attente",
     },
@@ -94,7 +94,6 @@ export default function StaffDashboardPage() {
             className="admin-card admin-card-wide"
             onClick={() => navigate("/admin")}
           >
-            <span className="admin-card-icon">⚙️</span>
             <div>
               <div className="admin-card-label">Administration</div>
               <div className="admin-card-desc">Accéder au tableau de bord admin</div>

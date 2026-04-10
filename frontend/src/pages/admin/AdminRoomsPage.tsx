@@ -169,7 +169,7 @@ export default function AdminRoomsPage() {
             </div>
             <div className="admin-list-item-actions">
               <button type="button" className="btn-icon" onClick={() => openEdit(room)} aria-label="Modifier">
-                ✏️
+                
               </button>
               <button
                 type="button"
@@ -177,7 +177,7 @@ export default function AdminRoomsPage() {
                 onClick={() => setDeleteId(room.room_id)}
                 aria-label="Supprimer"
               >
-                🗑️
+                
               </button>
             </div>
           </div>

@@ -33,15 +33,15 @@ export default function AdminDashboardPage() {
   }, []);
 
   const sections = [
-    { label: "Événements", icon: "🗓️", path: "/admin/events", count: stats?.events },
-    { label: "Activités", icon: "🎤", path: "/admin/activities", count: stats?.activities },
-    { label: "Salles", icon: "🏛️", path: "/admin/rooms", count: stats?.rooms },
-    { label: "Utilisateurs", icon: "👥", path: "/admin/users", count: stats?.users },
+    { label: "Événements", icon: "", path: "/admin/events", count: stats?.events },
+    { label: "Activités", icon: "", path: "/admin/activities", count: stats?.activities },
+    { label: "Salles", icon: "", path: "/admin/rooms", count: stats?.rooms },
+    { label: "Utilisateurs", icon: "", path: "/admin/users", count: stats?.users },
   ];
 
   return (
     <div className="page fade-in">
-      <h1 className="page-title">⚙️ Administration</h1>
+      <h1 className="page-title"> Administration</h1>
       {error && <div className="error-msg" role="alert">{error}</div>}
       <div className="admin-grid">
         {sections.map((s) => (
