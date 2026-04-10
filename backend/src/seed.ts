@@ -5,6 +5,16 @@ import { ARGON2OPTS } from "./argon2_config.js";
 
 dotenv.config();
 
+/** Return "YYYY-MM-DD HH:MM:SS+02" for today + offsetDays at given time */
+function dt(offsetDays: number, time: string): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd} ${time}+02`;
+}
+
 async function seed() {
   const sql = postgres({
     host: process.env.PGHOST,
@@ -88,21 +98,21 @@ async function seed() {
   // ===== Events =====
   await sql`
     INSERT INTO event (event_name, event_description, event_start, event_end, user_profile_id) VALUES
-      ('Tech Conference 2026', 'Conférence annuelle sur les nouvelles technologies, le design et l''innovation.', '2026-03-20 09:00:00+01', '2026-03-20 18:00:00+01', 1),
-      ('Workshop Week', 'Semaine dédiée aux ateliers pratiques et formations.', '2026-03-23 09:00:00+01', '2026-03-27 17:00:00+01', 1)
+      ('Tech Conference 2026', 'Conférence annuelle sur les nouvelles technologies, le design et l''innovation.', ${dt(1, '09:00:00')}, ${dt(1, '18:00:00')}, 1),
+      ('Workshop Week', 'Semaine dédiée aux ateliers pratiques et formations.', ${dt(4, '09:00:00')}, ${dt(8, '17:00:00')}, 1)
   `;
 
   // ===== Activities =====
   await sql`
     INSERT INTO activity (activity_name, activity_description, activity_start, activity_end, activity_real_start, activity_real_end, event_id, room_id) VALUES
-      ('Design Systems at Scale', 'Découvrez comment construire et maintenir un design system à grande échelle. Sarah Chen, Lead Designer chez Figma, partage son expérience sur la création de systèmes de design cohérents pour des équipes distribuées.', '2026-03-20 09:00:00+01', '2026-03-20 10:30:00+01', NULL, NULL, 1, 1),
-      ('UX Research Methods Workshop', 'Atelier pratique sur les méthodes de recherche UX modernes. Apprenez à conduire des interviews utilisateurs, des tests d''utilisabilité et à analyser les données qualitatives.', '2026-03-20 10:45:00+01', '2026-03-20 12:00:00+01', NULL, NULL, 1, 2),
-      ('Networking Lunch', 'Session ouverte de networking autour d''un déjeuner. Rencontrez les speakers et les autres participants dans un cadre décontracté.', '2026-03-20 12:00:00+01', '2026-03-20 13:00:00+01', NULL, NULL, 1, 5),
-      ('AI in Product Design', 'Comment l''intelligence artificielle transforme le design produit. Dr. Amelia Torres explore les nouvelles possibilités offertes par les outils IA pour les designers.', '2026-03-20 13:30:00+01', '2026-03-20 15:00:00+01', NULL, NULL, 1, 1),
-      ('Accessibility Best Practices', 'Atelier sur les bonnes pratiques d''accessibilité web. James Lee présente les techniques essentielles pour créer des interfaces accessibles à tous.', '2026-03-20 15:15:00+01', '2026-03-20 16:30:00+01', NULL, NULL, 1, 2),
-      ('Future of Mobile Interfaces', 'Conférence sur l''avenir des interfaces mobiles. Nina Patel partage sa vision des tendances émergentes et des nouvelles interactions.', '2026-03-20 16:45:00+01', '2026-03-20 18:00:00+01', NULL, NULL, 1, 1),
-      ('React Advanced Patterns', 'Plongez dans les patterns avancés de React : render props, compound components, state machines et plus encore.', '2026-03-23 09:00:00+01', '2026-03-23 11:00:00+01', NULL, NULL, 2, 4),
-      ('API Design Workshop', 'Atelier pratique sur la conception d''APIs RESTful robustes et bien documentées.', '2026-03-23 14:00:00+01', '2026-03-23 16:00:00+01', NULL, NULL, 2, 4)
+      ('Design Systems at Scale', 'Découvrez comment construire et maintenir un design system à grande échelle. Sarah Chen, Lead Designer chez Figma, partage son expérience sur la création de systèmes de design cohérents pour des équipes distribuées.', ${dt(1, '09:00:00')}, ${dt(1, '10:30:00')}, NULL, NULL, 1, 1),
+      ('UX Research Methods Workshop', 'Atelier pratique sur les méthodes de recherche UX modernes. Apprenez à conduire des interviews utilisateurs, des tests d''utilisabilité et à analyser les données qualitatives.', ${dt(1, '10:45:00')}, ${dt(1, '12:00:00')}, NULL, NULL, 1, 2),
+      ('Networking Lunch', 'Session ouverte de networking autour d''un déjeuner. Rencontrez les speakers et les autres participants dans un cadre décontracté.', ${dt(1, '12:00:00')}, ${dt(1, '13:00:00')}, NULL, NULL, 1, 5),
+      ('AI in Product Design', 'Comment l''intelligence artificielle transforme le design produit. Dr. Amelia Torres explore les nouvelles possibilités offertes par les outils IA pour les designers.', ${dt(1, '13:30:00')}, ${dt(1, '15:00:00')}, NULL, NULL, 1, 1),
+      ('Accessibility Best Practices', 'Atelier sur les bonnes pratiques d''accessibilité web. James Lee présente les techniques essentielles pour créer des interfaces accessibles à tous.', ${dt(1, '15:15:00')}, ${dt(1, '16:30:00')}, NULL, NULL, 1, 2),
+      ('Future of Mobile Interfaces', 'Conférence sur l''avenir des interfaces mobiles. Nina Patel partage sa vision des tendances émergentes et des nouvelles interactions.', ${dt(1, '16:45:00')}, ${dt(1, '18:00:00')}, NULL, NULL, 1, 1),
+      ('React Advanced Patterns', 'Plongez dans les patterns avancés de React : render props, compound components, state machines et plus encore.', ${dt(4, '09:00:00')}, ${dt(4, '11:00:00')}, NULL, NULL, 2, 4),
+      ('API Design Workshop', 'Atelier pratique sur la conception d''APIs RESTful robustes et bien documentées.', ${dt(4, '14:00:00')}, ${dt(4, '16:00:00')}, NULL, NULL, 2, 4)
   `;
 
   // ===== Runs (speakers assigned to activities) =====
