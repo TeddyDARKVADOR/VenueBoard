@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
+import ConfirmModal from "../components/ConfirmModal";
 import type { Activity, Queue } from "../types";
 import { formatTime } from "../utils";
 
 export default function QueuePage() {
   const { claims } = useAuth();
+  const { toast } = useToast();
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [queues, setQueues] = useState<Queue[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmLeaveId, setConfirmLeaveId] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([client.get("/activities"), client.get("/queues")]).then(
@@ -59,27 +63,32 @@ export default function QueuePage() {
   const rest = activeQueues.slice(1);
 
   const leaveQueue = async (activityId: number) => {
-    await client.delete(`/queues/${activityId}`);
-    setQueues((prev) =>
-      prev.filter(
-        (q) =>
-          !(
-            q.activity_id === activityId &&
-            q.user_profile_id === claims!.sub
-          ),
-      ),
-    );
+    try {
+      await client.delete(`/queues/${activityId}`);
+      setQueues((prev) =>
+        prev.filter(
+          (q) =>
+            !(
+              q.activity_id === activityId &&
+              q.user_profile_id === claims!.sub
+            ),
+        ),
+      );
+      toast("Vous avez quitté la file", "info");
+    } catch (err) {
+      toast(getErrorMessage(err), "error");
+    }
   };
 
   return (
-    <div className="page">
+    <div className="page fade-in">
       <div className="page-header-row">
         <h1 className="page-title">Ma file d'attente</h1>
         <span className="fav-total-count" style={{ marginBottom: 16 }}>
           {activeQueues.length}
         </span>
       </div>
-      {error && <div className="error-msg">{error}</div>}
+      {error && <div className="error-msg" role="alert">{error}</div>}
 
       {first && firstActivity ? (
         <div className="queue-position-card">
@@ -102,14 +111,13 @@ export default function QueuePage() {
           <button
             className="btn btn-danger btn-sm"
             style={{ marginTop: 8 }}
-            onClick={() => leaveQueue(first.activity_id)}
+            onClick={() => setConfirmLeaveId(first.activity_id)}
           >
             Quitter la file
           </button>
         </div>
       ) : (
         <div className="empty-state">
-          <div className="empty-state-icon">⏳</div>
           <div className="empty-state-text">
             Vous n'êtes dans aucune file d'attente
           </div>
@@ -123,7 +131,7 @@ export default function QueuePage() {
             const a = activityMap.get(q.activity_id);
             if (!a) return null;
             return (
-              <div key={q.activity_id} className="queue-item">
+              <div key={q.activity_id} className="queue-item slide-up">
                 <div className="queue-item-info">
                   <div className="queue-item-time">
                     {formatTime(a.activity_start)} -{" "}
@@ -136,7 +144,8 @@ export default function QueuePage() {
                 </div>
                 <button
                   className="queue-delete-btn"
-                  onClick={() => leaveQueue(q.activity_id)}
+                  onClick={() => setConfirmLeaveId(q.activity_id)}
+                  aria-label={`Quitter la file pour ${a.activity_name}`}
                 >
                   🗑
                 </button>
@@ -151,6 +160,10 @@ export default function QueuePage() {
           <div
             className="history-header"
             onClick={() => setHistoryOpen(!historyOpen)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && setHistoryOpen(!historyOpen)}
+            aria-expanded={historyOpen}
           >
             <h2 className="section-title">Historique</h2>
             <span className="history-toggle">
@@ -162,7 +175,7 @@ export default function QueuePage() {
               const a = activityMap.get(q.activity_id);
               if (!a) return null;
               return (
-                <div key={q.activity_id} className="history-item">
+                <div key={q.activity_id} className="history-item slide-up">
                   <div className="history-item-time">
                     {formatTime(a.activity_start)} -{" "}
                     {formatTime(a.activity_end)}
@@ -176,6 +189,19 @@ export default function QueuePage() {
             })}
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmLeaveId !== null}
+        title="Quitter la file"
+        message="Êtes-vous sûr de vouloir quitter cette file d'attente ?"
+        confirmLabel="Quitter"
+        danger
+        onConfirm={() => {
+          if (confirmLeaveId !== null) leaveQueue(confirmLeaveId);
+          setConfirmLeaveId(null);
+        }}
+        onCancel={() => setConfirmLeaveId(null)}
+      />
     </div>
   );
 }

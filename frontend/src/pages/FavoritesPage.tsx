@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
+import ConfirmModal from "../components/ConfirmModal";
 import type { Activity, Favorite, Run, UserProfile } from "../types";
 import { formatTime, getBadgeClass, getCategory, getCategoryLabel } from "../utils";
 
 export default function FavoritesPage() {
   const { claims } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -15,6 +18,7 @@ export default function FavoritesPage() {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [error, setError] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -86,35 +90,44 @@ export default function FavoritesPage() {
   );
 
   const removeFav = async (activityId: number) => {
-    await client.delete(`/favorites/${activityId}`);
-    setFavorites((prev) =>
-      prev.filter(
-        (f) =>
-          !(f.user_profile_id === claims!.sub && f.activity_id === activityId),
-      ),
-    );
+    try {
+      await client.delete(`/favorites/${activityId}`);
+      setFavorites((prev) =>
+        prev.filter(
+          (f) =>
+            !(f.user_profile_id === claims!.sub && f.activity_id === activityId),
+        ),
+      );
+      toast("Retiré des favoris", "info");
+    } catch (err) {
+      toast(getErrorMessage(err), "error");
+    }
   };
 
   const displayed = tab === "upcoming" ? upcoming : past;
 
   return (
-    <div className="page">
+    <div className="page fade-in">
       <div className="fav-title-row">
         <h1>Mes favoris</h1>
         <span className="fav-total-count">{myFavIds.length}</span>
       </div>
-      {error && <div className="error-msg">{error}</div>}
+      {error && <div className="error-msg" role="alert">{error}</div>}
 
-      <div className="tabs">
+      <div className="tabs" role="tablist">
         <button
           className={`tab${tab === "upcoming" ? " active" : ""}`}
           onClick={() => setTab("upcoming")}
+          role="tab"
+          aria-selected={tab === "upcoming"}
         >
           À venir <span className="tab-count">{upcoming.length}</span>
         </button>
         <button
           className={`tab${tab === "past" ? " active" : ""}`}
           onClick={() => setTab("past")}
+          role="tab"
+          aria-selected={tab === "past"}
         >
           Passés <span className="tab-count">{past.length}</span>
         </button>
@@ -122,7 +135,6 @@ export default function FavoritesPage() {
 
       {displayed.length === 0 && (
         <div className="empty-state">
-          <div className="empty-state-icon">♥</div>
           <div className="empty-state-text">
             {tab === "upcoming"
               ? "Aucun favori à venir"
@@ -138,8 +150,9 @@ export default function FavoritesPage() {
         return (
           <div
             key={activity.activity_id}
-            className="activity-card"
+            className="activity-card slide-up"
             onClick={() => navigate(`/activity/${activity.activity_id}`)}
+            role="article"
           >
             <div className="activity-card-header">
               <span className="activity-time">
@@ -150,8 +163,9 @@ export default function FavoritesPage() {
                 className="fav-btn active"
                 onClick={(e) => {
                   e.stopPropagation();
-                  removeFav(activity.activity_id);
+                  setConfirmRemoveId(activity.activity_id);
                 }}
+                aria-label="Retirer des favoris"
               >
                 ♥
               </button>
@@ -162,6 +176,19 @@ export default function FavoritesPage() {
           </div>
         );
       })}
+
+      <ConfirmModal
+        open={confirmRemoveId !== null}
+        title="Retirer des favoris"
+        message="Voulez-vous retirer cette activité de vos favoris ?"
+        confirmLabel="Retirer"
+        danger
+        onConfirm={() => {
+          if (confirmRemoveId !== null) removeFav(confirmRemoveId);
+          setConfirmRemoveId(null);
+        }}
+        onCancel={() => setConfirmRemoveId(null)}
+      />
     </div>
   );
 }

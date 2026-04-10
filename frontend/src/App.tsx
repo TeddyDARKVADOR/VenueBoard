@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import ActivityDetailPage from "./pages/ActivityDetailPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import LoginPage from "./pages/LoginPage";
@@ -12,7 +13,7 @@ import BottomNav from "./components/BottomNav";
 function AppRoutes() {
   const { claims, loading } = useAuth();
 
-  if (loading) return <div className="loading-screen">Chargement...</div>;
+  if (loading) return <div className="loading-screen"><div className="spinner" />Chargement...</div>;
 
   if (!claims) {
     return (
@@ -44,9 +45,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

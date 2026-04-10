@@ -2,12 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import client, { getErrorMessage } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
+import ConfirmModal from "../components/ConfirmModal";
+import SpeakerModal from "../components/SpeakerModal";
 import type { Activity, Queue, Register, Room, Run, UserProfile } from "../types";
 import { formatDate, formatTime, getBadgeClass, getCategory, getCategoryLabel } from "../utils";
 
 export default function ActivityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { claims } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [activity, setActivity] = useState<Activity | null>(null);
@@ -18,6 +22,8 @@ export default function ActivityDetailPage() {
   const [queues, setQueues] = useState<Queue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [selectedSpeaker, setSelectedSpeaker] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +61,11 @@ export default function ActivityDetailPage() {
     return profileMap.get(run.user_profile_id) ?? null;
   }, [runs, activity, profileMap]);
 
+  const speakerActivitiesCount = useMemo(() => {
+    if (!speaker) return 0;
+    return runs.filter((r) => r.user_profile_id === speaker.user_profile_id).length;
+  }, [runs, speaker]);
+
   const registerCount = useMemo(() => {
     if (!activity) return 0;
     return registers.filter((r) => r.activity_id === activity.activity_id)
@@ -83,37 +94,45 @@ export default function ActivityDetailPage() {
 
   const joinQueue = async () => {
     if (!activity) return;
-    const resp = await client.post(`/queues/${activity.activity_id}`);
-    setQueues((prev) => [
-      ...prev,
-      {
-        position: resp.data.position,
-        user_profile_id: claims!.sub,
-        activity_id: activity.activity_id,
-      },
-    ]);
-    // Refresh registers in case joining queue auto-registered us
-    const regResp = await client.get("/registers");
-    setRegisters(regResp.data);
+    try {
+      const resp = await client.post(`/queues/${activity.activity_id}`);
+      setQueues((prev) => [
+        ...prev,
+        {
+          position: resp.data.position,
+          user_profile_id: claims!.sub,
+          activity_id: activity.activity_id,
+        },
+      ]);
+      const regResp = await client.get("/registers");
+      setRegisters(regResp.data);
+      toast("Vous avez rejoint la file d'attente", "success");
+    } catch (err) {
+      toast(getErrorMessage(err), "error");
+    }
   };
 
   const leaveQueue = async () => {
     if (!activity) return;
-    await client.delete(`/queues/${activity.activity_id}`);
-    setQueues((prev) =>
-      prev.filter(
-        (q) =>
-          !(
-            q.activity_id === activity.activity_id &&
-            q.user_profile_id === claims!.sub
-          ),
-      ),
-    );
+    try {
+      await client.delete(`/queues/${activity.activity_id}`);
+      setQueues((prev) =>
+        prev.filter(
+          (q) =>
+            !(
+              q.activity_id === activity.activity_id &&
+              q.user_profile_id === claims!.sub
+            ),
+        ),
+      );
+      toast("Vous avez quitté la file", "info");
+    } catch (err) {
+      toast(getErrorMessage(err), "error");
+    }
   };
 
-  if (error) return <div className="page error-msg">{error}</div>;
   if (loading || !activity)
-    return <div className="loading-screen">Chargement...</div>;
+    return <div className="loading-screen"><div className="spinner" />Chargement...</div>;
 
   const cat = getCategory(activity.activity_name);
   const capacity = room?.room_capacity ?? 0;
@@ -121,29 +140,30 @@ export default function ActivityDetailPage() {
   const isPast = new Date(activity.activity_end) < new Date();
 
   return (
-    <div className="page">
-      <button className="detail-back" onClick={() => navigate(-1)}>
+    <div className="page fade-in">
+      <button className="detail-back" onClick={() => navigate(-1)} aria-label="Retour">
         ← Retour
       </button>
+
+      {error && <div className="error-msg" role="alert">{error}</div>}
 
       <div className={`detail-header-image ${cat}`} />
 
       <div className="detail-category">
         <span className={getBadgeClass(cat)}>{getCategoryLabel(cat)}</span>
+        {isPast && <span className="badge badge-past">Terminée</span>}
       </div>
 
       <h1 className="detail-title">{activity.activity_name}</h1>
 
       <div className="detail-meta">
         <div className="detail-meta-item">
-          <span className="detail-meta-icon">🕐</span>
           {formatDate(activity.activity_start)},{" "}
           {formatTime(activity.activity_start)} -{" "}
           {formatTime(activity.activity_end)}
         </div>
         {room && (
           <div className="detail-meta-item">
-            <span className="detail-meta-icon">📍</span>
             {room.room_name}
           </div>
         )}
@@ -168,8 +188,16 @@ export default function ActivityDetailPage() {
       {speaker && (
         <>
           <h2 className="detail-section-title">Intervenant</h2>
-          <div className="speaker-card">
-            <div className="speaker-avatar" />
+          <div
+            className="speaker-card clickable"
+            onClick={() => setSelectedSpeaker(speaker)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && setSelectedSpeaker(speaker)}
+          >
+            <div className="speaker-avatar">
+              {speaker.user_profile_name.charAt(0).toUpperCase()}
+            </div>
             <div className="speaker-info">
               <div className="speaker-name">{speaker.user_profile_name}</div>
               <div className="speaker-role">{speaker.user_profile_role}</div>
@@ -197,7 +225,7 @@ export default function ActivityDetailPage() {
           {myQueue ? (
             <button
               className="btn btn-danger btn-full"
-              onClick={leaveQueue}
+              onClick={() => setConfirmLeave(true)}
             >
               Quitter la file (position {myQueue.position})
             </button>
@@ -217,6 +245,25 @@ export default function ActivityDetailPage() {
           </button>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmLeave}
+        title="Quitter la file"
+        message="Êtes-vous sûr de vouloir quitter la file d'attente ? Vous perdrez votre position."
+        confirmLabel="Quitter"
+        danger
+        onConfirm={() => {
+          setConfirmLeave(false);
+          leaveQueue();
+        }}
+        onCancel={() => setConfirmLeave(false)}
+      />
+
+      <SpeakerModal
+        speaker={selectedSpeaker}
+        activitiesCount={speakerActivitiesCount}
+        onClose={() => setSelectedSpeaker(null)}
+      />
     </div>
   );
 }
