@@ -291,7 +291,7 @@ export class Repository {
   async readAllRegister() {
     const rows = (await this.sql`
     SELECT *
-    FROM register`) as model.Register[];
+    FROM register`) as model.RegisterWithCheckin[];
     return rows;
   }
 
@@ -895,6 +895,35 @@ export class Repository {
         pos += 1;
       }
     }
+  }
+
+  async checkInParticipant(register: model.Register) {
+    const rows = (await this.sql`
+      UPDATE register
+      SET is_checked_in = TRUE
+      WHERE user_profile_id = ${register.user_profile_id}
+      AND activity_id = ${register.activity_id}
+      RETURNING *`) as model.RegisterWithCheckin[];
+    if (rows.length === 0) {
+      throw new CustomError(
+        "POSTGRES",
+        HttpStatus.NOT_FOUND,
+        "Not found",
+        "register",
+      );
+    }
+    return rows[0];
+  }
+
+  async readParticipantsByActivityId({ id }: model.ObjectId) {
+    const rows = (await this.sql`
+      SELECT r.user_profile_id, r.activity_id, r.is_checked_in,
+             up.user_profile_name
+      FROM register r
+      JOIN user_profile up ON r.user_profile_id = up.user_profile_id
+      WHERE r.activity_id = ${id}
+      ORDER BY up.user_profile_name`) as model.Participant[];
+    return rows;
   }
 
   // ----- Complex requests ------

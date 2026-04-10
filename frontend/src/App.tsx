@@ -8,6 +8,14 @@ import ProfilePage from "./pages/ProfilePage";
 import ProgrammePage from "./pages/ProgrammePage";
 import QueuePage from "./pages/QueuePage";
 import RegisterPage from "./pages/RegisterPage";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminEventsPage from "./pages/admin/AdminEventsPage";
+import AdminActivitiesPage from "./pages/admin/AdminActivitiesPage";
+import AdminRoomsPage from "./pages/admin/AdminRoomsPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import StaffDashboardPage from "./pages/staff/StaffDashboardPage";
+import StaffScanPage from "./pages/staff/StaffScanPage";
+import StaffQueuePage from "./pages/staff/StaffQueuePage";
 import BottomNav from "./components/BottomNav";
 
 function AppRoutes() {
@@ -25,6 +33,9 @@ function AppRoutes() {
     );
   }
 
+  const isAdmin = claims.role === "admin";
+  const isStaff = claims.role === "staff" || isAdmin;
+
   return (
     <div className="app-shell">
       <BottomNav />
@@ -35,6 +46,25 @@ function AppRoutes() {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/queue" element={<QueuePage />} />
           <Route path="/profile" element={<ProfilePage />} />
+
+          {isStaff && (
+            <>
+              <Route path="/staff" element={<StaffDashboardPage />} />
+              <Route path="/staff/scan" element={<StaffScanPage />} />
+              <Route path="/staff/queue" element={<StaffQueuePage />} />
+            </>
+          )}
+
+          {isAdmin && (
+            <>
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/events" element={<AdminEventsPage />} />
+              <Route path="/admin/activities" element={<AdminActivitiesPage />} />
+              <Route path="/admin/rooms" element={<AdminRoomsPage />} />
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+            </>
+          )}
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

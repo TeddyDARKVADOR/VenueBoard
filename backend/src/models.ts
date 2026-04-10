@@ -51,8 +51,24 @@ export const ZRegister = z.object({
   user_profile_id: ZId,
   activity_id: ZId,
 });
+export const ZRegisterWithCheckin = ZRegister.extend({
+  is_checked_in: z.boolean(),
+});
+export const ZCheckinParams = z.object({
+  activity_id: ZId,
+  user_profile_id: ZId,
+});
+export const ZParticipant = z.object({
+  user_profile_id: ZId,
+  activity_id: ZId,
+  is_checked_in: z.boolean(),
+  user_profile_name: z.string(),
+});
 
 export type Register = z.infer<typeof ZRegister>;
+export type RegisterWithCheckin = z.infer<typeof ZRegisterWithCheckin>;
+export type CheckinParams = z.infer<typeof ZCheckinParams>;
+export type Participant = z.infer<typeof ZParticipant>;
 
 export const ZEvent = z.object({
   event_id: ZId,

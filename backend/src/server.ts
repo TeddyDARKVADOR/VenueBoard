@@ -13,6 +13,7 @@ import { CustomError } from "./custom_error.js";
 import { Repository } from "./db.js";
 import {
   type ActivityWithoutId,
+  type CheckinParams,
   type EventWithoutId,
   HttpStatus,
   type JwtClaims,
@@ -27,6 +28,7 @@ import {
   type RoomWithoutId,
   type PartialRoomWithoutId,
   ZActivityWithoutId,
+  ZCheckinParams,
   ZEventWithoutId,
   ZObjectId,
   ZRoomWithoutId,
@@ -705,7 +707,7 @@ function start_web_server() {
 
   web_server.get(
     "/queues_to_register",
-    { preHandler: requireRoles(["admin"]) },
+    { preHandler: requireRoles(["admin", "staff"]) },
     async (_req, res) => {
       await repo.queueToRegister();
       res.code(204);
@@ -714,10 +716,38 @@ function start_web_server() {
 
   web_server.get(
     "/queues_positions",
-    { preHandler: requireRoles(["admin"]) },
+    { preHandler: requireRoles(["admin", "staff"]) },
     async (_req, res) => {
       await repo.cleanPosition();
       res.code(204);
+    },
+  );
+
+  // ----- Check-in routes -----
+
+  web_server.post<{ Params: CheckinParams }>(
+    "/checkin/:activity_id/:user_profile_id",
+    {
+      schema: { params: ZCheckinParams },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
+    async (req) => {
+      await repo.checkInParticipant({
+        user_profile_id: req.params.user_profile_id,
+        activity_id: req.params.activity_id,
+      });
+      return { message: "checked in" };
+    },
+  );
+
+  web_server.get<{ Params: ObjectId }>(
+    "/participants/:id",
+    {
+      schema: { params: ZObjectId },
+      preHandler: requireRoles(["admin", "staff"]),
+    },
+    async (req) => {
+      return await repo.readParticipantsByActivityId(req.params);
     },
   );
 

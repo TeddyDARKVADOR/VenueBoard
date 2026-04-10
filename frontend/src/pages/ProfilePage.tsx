@@ -144,7 +144,7 @@ export default function ProfilePage() {
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === "Enter" && setHistoryOpen(!historyOpen)}
-            aria-expanded={historyOpen}
+            aria-expanded={historyOpen ? "true" : "false"}
           >
             <h2 className="section-title">Historique ({myPastActivities.length})</h2>
             <span className="history-toggle">

@@ -2,22 +2,31 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import ThemeToggle from "./ThemeToggle";
 
-const tabs = [
-  { path: "/", label: "Programme", icon: "" },
-  { path: "/favorites", label: "Favoris", icon: "" },
-  { path: "/queue", label: "File d'attente", icon: "" },
-  { path: "/profile", label: "Profil", icon: "" },
+const guestTabs = [
+  { path: "/", label: "Programme", icon: "📅" },
+  { path: "/favorites", label: "Favoris", icon: "⭐" },
+  { path: "/queue", label: "File", icon: "⏳" },
+  { path: "/profile", label: "Profil", icon: "👤" },
 ];
 
 export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { claims, logout } = useAuth();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
+
+  const isAdmin = claims?.role === "admin";
+  const isStaff = claims?.role === "staff" || isAdmin;
+
+  const tabs = [
+    ...guestTabs,
+    ...(isStaff ? [{ path: "/staff", label: "Staff", icon: "🔧" }] : []),
+    ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: "⚙️" }] : []),
+  ];
 
   return (
     <nav className="app-nav" role="navigation" aria-label="Navigation principale">

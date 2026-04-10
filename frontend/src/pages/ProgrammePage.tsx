@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client, { getErrorMessage } from "../api/client";
@@ -184,31 +185,33 @@ export default function ProgrammePage() {
         )}
       </div>
 
-      <div className="filter-chips" role="group" aria-label="Filtrer par catégorie">
+      <fieldset className="filter-chips">
+        <legend className="sr-only">Filtrer par catégorie</legend>
         {chips.map((c) => (
           <button
             key={c.key}
             className={`chip${filter === c.key ? " active" : ""}`}
             onClick={() => setFilter(c.key)}
-            aria-pressed={filter === c.key}
+            aria-pressed={filter === c.key ? "true" : "false"}
           >
             {c.label}
           </button>
         ))}
-      </div>
+      </fieldset>
 
-      <div className="filter-chips" role="group" aria-label="Filtrer par disponibilité">
+      <fieldset className="filter-chips">
+        <legend className="sr-only">Filtrer par disponibilité</legend>
         {availChips.map((c) => (
           <button
             key={c.key}
             className={`chip chip-secondary${availFilter === c.key ? " active" : ""}`}
             onClick={() => setAvailFilter(c.key)}
-            aria-pressed={availFilter === c.key}
+            aria-pressed={availFilter === c.key ? "true" : "false"}
           >
             {c.label}
           </button>
         ))}
-      </div>
+      </fieldset>
 
       {filtered.length === 0 && (
         <div className="empty-state">
@@ -226,14 +229,16 @@ export default function ProgrammePage() {
           const pct = capacity > 0 ? (count / capacity) * 100 : 0;
           const isFav = myFavorites.has(activity.activity_id);
           const isPast = new Date(activity.activity_end) < new Date();
+          const barMod = pct >= 100 ? " full" : pct >= 80 ? " low" : "";
 
           return (
-            <div
+            <article
               key={activity.activity_id}
               className={`activity-card slide-up${isPast ? " past" : ""}`}
               data-category={cat}
               onClick={() => !isPast && navigate(`/activity/${activity.activity_id}`)}
-              role="article"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!isPast) navigate(`/activity/${activity.activity_id}`); } }}
+              tabIndex={isPast ? -1 : 0}
               aria-label={activity.activity_name}
             >
               <div className="activity-card-header">
@@ -248,7 +253,7 @@ export default function ProgrammePage() {
                     toggleFav(activity.activity_id);
                   }}
                   aria-label={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
-                  aria-pressed={isFav}
+                  aria-pressed={isFav ? "true" : "false"}
                 >
                   {isFav ? "♥" : "♡"}
                 </button>
@@ -280,14 +285,14 @@ export default function ProgrammePage() {
                     </div>
                     <div className="capacity-bar-track">
                       <div
-                        className={`capacity-bar-fill${pct >= 100 ? " full" : pct >= 80 ? " low" : ""}`}
-                        style={{ width: `${Math.min(pct, 100)}%` }}
+                        className={`capacity-bar-fill${barMod}`}
+                        style={{ "--capacity-pct": `${Math.min(pct, 100)}%` } as React.CSSProperties}
                       />
                     </div>
                   </div>
                 </>
               )}
-            </div>
+            </article>
           );
         })}
       </div>
