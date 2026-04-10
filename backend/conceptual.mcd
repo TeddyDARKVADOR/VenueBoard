@@ -2,11 +2,11 @@ UserAuth: id,  login, password
 
 Relate, 11 UserProfile, 11 UserAuth
 
-UserProfile: id, name, role, favorites
+UserProfile: id, name, role
 
 Create, 11 Event, 0N UserProfile
 Run, 1N Activity, 0N UserProfile
-Register, 0N Activity, 0N UserProfile
+Register, 0N Activity, 0N UserProfile: is_checked_in
 Favorite, ON Activity, ON UserProfile
 Queue, 0N UserProfile, 0N Activity: position
 
