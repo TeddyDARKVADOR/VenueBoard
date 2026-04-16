@@ -21,7 +21,3 @@ npm run dev
 ```
 
 Comptes de test après seed : `admin` / `admin123`, `thomas` / `guest123`, `sophie` / `guest456`.
-
-## 3. Fonctionnalités à venir
-
-Les administrateurs auront accès à un tableau de bord pour créer, modifier et supprimer des événements, activités et salles, ainsi que gérer les rôles des utilisateurs. Le staff disposera d'outils pour valider les inscriptions, scanner les entrées des participants et gérer les files d'attente en temps réel. Ces fonctionnalités seront accessibles via des pages dédiées protégées par rôle, invisibles pour les participants classiques.
