@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    volumes:
+      - pg_data:/var/lib/postgresql
+      - ./backend/migrations/:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_PASSWORD: abce
+      POSTGRES_USER: venueboard_user
+      POSTGRES_DB: venueboard
+
+  backend:
+    build: ./backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: venueboard_user
+      PGPASSWORD: abce
+      PGDATABASE: venueboard
+      JWT_SECRET: Hy8aBkSqXmWq6y4M3VPkS73ma58BNjv1Hz3P7L9Y1k4
+
+  frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:

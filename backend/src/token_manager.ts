@@ -12,7 +12,7 @@ export class TokenManager {
   secret: Uint8Array;
 
   constructor(secret_str?: string | Uint8Array) {
-    process.loadEnvFile();
+    try { process.loadEnvFile(); } catch {}
     const src = secret_str ?? process.env?.JWT_SECRET;
     if (!src) {
       throw new Error(
