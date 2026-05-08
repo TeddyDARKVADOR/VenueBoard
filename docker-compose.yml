@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_USER: venueboard_user
+      POSTGRES_PASSWORD: abce
+      POSTGRES_DB: venueboard
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U venueboard_user -d venueboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: always
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: venueboard_user
+      PGPASSWORD: abce
+      PGDATABASE: venueboard
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "1234:1234"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pg_data:

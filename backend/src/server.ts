@@ -1,5 +1,6 @@
 import fastifyCookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
 import { addHours } from "date-fns";
 import * as dotenv from "dotenv";
 import Fastify from "fastify";
@@ -9,6 +10,8 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from "fastify-type-provider-zod";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { CustomError } from "./custom_error.js";
 import { Repository } from "./db.js";
 import {
@@ -45,6 +48,9 @@ import { requireRoles, sameId, TokenManager } from "./token_manager.js";
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 declare module "fastify" {
   interface FastifyRequest {
     claims: JwtClaims | null;
@@ -63,6 +69,12 @@ function start_web_server() {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
+  });
+
+  // Serve frontend static files
+  web_server.register(fastifyStatic, {
+    root: join(__dirname, "../public"),
+    prefix: "/",
   });
 
   // ----- Error Handler -----
@@ -128,13 +140,19 @@ function start_web_server() {
   // ----- Hooks -----
 
   web_server.addHook("preHandler", async (req) => {
-    // method that needs a body
+    // Skip auth check for static file routes
+    if (!req.originalUrl.startsWith("/api")) {
+      req.claims = null;
+      return;
+    }
+
+    // methods that need a body
     if (
       (req.method === "PUT" || req.method === "POST") &&
-      !req.originalUrl.startsWith("/favorites") &&
-      !req.originalUrl.startsWith("/runs") &&
-      !req.originalUrl.startsWith("/queues") &&
-      !req.originalUrl.startsWith("/registers")
+      !req.originalUrl.startsWith("/api/favorites") &&
+      !req.originalUrl.startsWith("/api/runs") &&
+      !req.originalUrl.startsWith("/api/queues") &&
+      !req.originalUrl.startsWith("/api/registers")
     ) {
       if (!req.body) {
         throw new CustomError(
@@ -145,13 +163,13 @@ function start_web_server() {
       }
     }
 
-    // routes which doesn't need claims
+    // routes which don't need claims
     if (
-      req.originalUrl === "/login" ||
+      req.originalUrl === "/api/login" ||
       (req.method === "POST" &&
-        (req.originalUrl === "/user_auths" ||
-          req.originalUrl === "/user_profiles")) ||
-      req.originalUrl.startsWith("/token")
+        (req.originalUrl === "/api/user_auths" ||
+          req.originalUrl === "/api/user_profiles")) ||
+      req.originalUrl.startsWith("/api/token")
     ) {
       if (req.cookies.access_token) {
         try {
@@ -173,583 +191,634 @@ function start_web_server() {
       : null;
   });
 
-  // ----- Token -----
+  // ----- API Routes (prefixed with /api) -----
 
-  // Thoses 2 routes are just here for testing
+  web_server.register(
+    async (api) => {
+      const typedApi = api.withTypeProvider<ZodTypeProvider>();
 
-  web_server.get<{ Params: ObjectId }>(
-    "/token/:id",
-    { schema: { params: ZObjectId } },
-    async (req, res) => {
-      const user_profile = await repo.readUserProfileById(req.params);
-      const token = await tokenManager.encode(
-        {
-          sub: user_profile.user_profile_id,
-          role: user_profile.user_profile_role,
+      // ----- Token -----
+
+      // Those 2 routes are just here for testing
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/token/:id",
+        { schema: { params: ZObjectId } },
+        async (req, res) => {
+          const user_profile = await repo.readUserProfileById(req.params);
+          const token = await tokenManager.encode(
+            {
+              sub: user_profile.user_profile_id,
+              role: user_profile.user_profile_role,
+            },
+            false,
+          );
+          res
+            .setCookie("access_token", token, {
+              secure: false,
+              sameSite: "lax",
+              path: "/",
+              expires: addHours(new Date(), 1),
+            })
+            .code(204);
         },
-        false,
       );
-      res
-        .setCookie("access_token", token, {
-          secure: false,
-          sameSite: "lax",
-          path: "/",
-          expires: addHours(new Date(), 1),
-        })
-        .code(204);
-    },
-  );
 
-  web_server.get("/claims", async (req) => {
-    return req.claims;
-  });
+      typedApi.get("/claims", async (req) => {
+        return req.claims;
+      });
 
-  // ----- Event routes -----
+      // ----- Event routes -----
 
-  web_server.post<{ Body: EventWithoutId }>(
-    "/events",
-    {
-      schema: { body: ZEventWithoutId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      const event = await repo.createEvent(req.body);
-      return { event_id: event.event_id, message: "created" };
-    },
-  );
-
-  web_server.get<{ Params: ObjectId }>(
-    "/events/:id",
-    { schema: { params: ZObjectId } },
-    async (req) => {
-      return await repo.readEventById(req.params);
-    },
-  );
-
-  web_server.get("/events", async () => {
-    return await repo.readAllEvents();
-  });
-
-  web_server.get<{ Params: ObjectId }>(
-    "/event_with_activities/:id",
-    { schema: { params: ZObjectId } },
-    async (req) => {
-      return await repo.readEventWithActivitiesByEventId(req.params);
-    },
-  );
-
-  web_server.put<{ Params: ObjectId; Body: PartialEventWithoutId }>(
-    "/events/:id",
-    {
-      schema: { params: ZObjectId, body: ZPartialEventWithoutId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      const event = await repo.updateEventById(req.params, req.body);
-      return { event_id: event.event_id, message: "updated" };
-    },
-  );
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/events/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      await repo.deleteEventById(req.params);
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- Activity Routes -----
-
-  web_server.post<{ Body: ActivityWithoutId }>(
-    "/activities",
-    {
-      schema: { body: ZActivityWithoutId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      const activity = await repo.createActivity(req.body);
-      return { activity_id: activity.activity_id, message: "created" };
-    },
-  );
-
-  web_server.get("/activities", async () => {
-    return await repo.readAllActivities();
-  });
-
-  web_server.get<{ Params: ObjectId }>(
-    "/activities/:id",
-    { schema: { params: ZObjectId } },
-    async (req) => {
-      return await repo.readActivityById(req.params);
-    },
-  );
-
-  web_server.get<{ Params: ObjectId }>(
-    "/activity_with_event/:id",
-    { schema: { params: ZObjectId } },
-    async (req) => {
-      return await repo.readActivityWithEventByActivityId(req.params);
-    },
-  );
-
-  web_server.put<{ Params: ObjectId; Body: PartialActivityWithoutId }>(
-    "/activities/:id",
-    {
-      schema: { params: ZObjectId, body: ZPartialActivityWithoutId },
-      preHandler: requireRoles(["admin", "staff", "speaker"]),
-    },
-    async (req) => {
-      const activity = await repo.updateActivityById(
-        req.params,
-        req.body,
-        req.claims?.role,
-      );
-      return { activity_id: activity.activity_id, message: "updated" };
-    },
-  );
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/activities/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      await repo.deleteActivityById(req.params);
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- UserProfile routes -----
-
-  web_server.post<{ Body: UserProfileWithoutId }>(
-    "/user_profiles",
-    { schema: { body: ZUserProfileWithoutId } },
-    async (req) => {
-      const user_profile = await repo.createUserProfile(
-        req.body,
-        req.claims?.role,
-      );
-      return {
-        user_profile_id: user_profile.user_profile_id,
-        message: "created",
-      };
-    },
-  );
-
-  web_server.get<{ Params: ObjectId }>(
-    "/user_profiles/:id",
-    { schema: { params: ZObjectId } },
-    async (req) => {
-      return await repo.readUserProfileById(req.params);
-    },
-  );
-
-  web_server.get("/user_profiles", async () => {
-    return await repo.readAllUserProfile();
-  });
-
-  web_server.put<{ Params: ObjectId; Body: PartialUserProfileWithoutId }>(
-    "/user_profiles/:id",
-    {
-      schema: { params: ZObjectId, body: ZPartialUserProfileWithoutId },
-      preHandler: [
-        requireRoles(["admin", "guest", "speaker", "staff"]),
-        sameId("/user_profiles/"),
-      ],
-    },
-    async (req) => {
-      const user_profile = await repo.updateUserProfileById(
-        req.params,
-        req.body,
-        req.claims?.role,
-      );
-      return {
-        user_profile_id: user_profile.user_profile_id,
-        message: "updated",
-      };
-    },
-  );
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/user_profiles/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: [
-        requireRoles(["admin", "guest", "speaker", "staff"]),
-        sameId("/user_profiles/"),
-      ],
-    },
-    async (req) => {
-      await repo.deleteUserProfileById(req.params);
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- UserAuth routes -----
-
-  web_server.post<{ Body: UserAuthLogin }>(
-    "/login",
-    { schema: { body: ZUserAuthLogin } },
-    async (req, res) => {
-      const user_profile_id = await repo.loginUserAuth(req.body);
-      if (!user_profile_id) {
-        throw new CustomError(
-          "LOGIC",
-          HttpStatus.UNAUTHORIZED,
-          "wrong login or password",
-        );
-      }
-      const user_profile_role = (
-        await repo.readUserProfileById({
-          id: user_profile_id,
-        })
-      ).user_profile_role;
-      const token = await tokenManager.encode(
+      typedApi.post<{ Body: EventWithoutId }>(
+        "/events",
         {
-          sub: user_profile_id,
-          role: user_profile_role,
+          schema: { body: ZEventWithoutId },
+          preHandler: requireRoles(["admin", "staff"]),
         },
-        false,
+        async (req) => {
+          const event = await repo.createEvent(req.body);
+          return { event_id: event.event_id, message: "created" };
+        },
       );
-      res.setCookie("access_token", token, {
-        secure: false,
-        sameSite: "lax",
-        path: "/",
-        expires: addHours(new Date(), 1),
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/events/:id",
+        { schema: { params: ZObjectId } },
+        async (req) => {
+          return await repo.readEventById(req.params);
+        },
+      );
+
+      typedApi.get("/events", async () => {
+        return await repo.readAllEvents();
       });
-      res.status(204);
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/event_with_activities/:id",
+        { schema: { params: ZObjectId } },
+        async (req) => {
+          return await repo.readEventWithActivitiesByEventId(req.params);
+        },
+      );
+
+      typedApi.put<{ Params: ObjectId; Body: PartialEventWithoutId }>(
+        "/events/:id",
+        {
+          schema: { params: ZObjectId, body: ZPartialEventWithoutId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          const event = await repo.updateEventById(req.params, req.body);
+          return { event_id: event.event_id, message: "updated" };
+        },
+      );
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/events/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          await repo.deleteEventById(req.params);
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- Activity Routes -----
+
+      typedApi.post<{ Body: ActivityWithoutId }>(
+        "/activities",
+        {
+          schema: { body: ZActivityWithoutId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          const activity = await repo.createActivity(req.body);
+          return { activity_id: activity.activity_id, message: "created" };
+        },
+      );
+
+      typedApi.get("/activities", async () => {
+        return await repo.readAllActivities();
+      });
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/activities/:id",
+        { schema: { params: ZObjectId } },
+        async (req) => {
+          return await repo.readActivityById(req.params);
+        },
+      );
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/activity_with_event/:id",
+        { schema: { params: ZObjectId } },
+        async (req) => {
+          return await repo.readActivityWithEventByActivityId(req.params);
+        },
+      );
+
+      typedApi.put<{ Params: ObjectId; Body: PartialActivityWithoutId }>(
+        "/activities/:id",
+        {
+          schema: { params: ZObjectId, body: ZPartialActivityWithoutId },
+          preHandler: requireRoles(["admin", "staff", "speaker"]),
+        },
+        async (req) => {
+          const activity = await repo.updateActivityById(
+            req.params,
+            req.body,
+            req.claims?.role,
+          );
+          return { activity_id: activity.activity_id, message: "updated" };
+        },
+      );
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/activities/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          await repo.deleteActivityById(req.params);
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- UserProfile routes -----
+
+      typedApi.post<{ Body: UserProfileWithoutId }>(
+        "/user_profiles",
+        { schema: { body: ZUserProfileWithoutId } },
+        async (req) => {
+          const user_profile = await repo.createUserProfile(
+            req.body,
+            req.claims?.role,
+          );
+          return {
+            user_profile_id: user_profile.user_profile_id,
+            message: "created",
+          };
+        },
+      );
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/user_profiles/:id",
+        { schema: { params: ZObjectId } },
+        async (req) => {
+          return await repo.readUserProfileById(req.params);
+        },
+      );
+
+      typedApi.get("/user_profiles", async () => {
+        return await repo.readAllUserProfile();
+      });
+
+      typedApi.put<{ Params: ObjectId; Body: PartialUserProfileWithoutId }>(
+        "/user_profiles/:id",
+        {
+          schema: { params: ZObjectId, body: ZPartialUserProfileWithoutId },
+          preHandler: [
+            requireRoles(["admin", "guest", "speaker", "staff"]),
+            sameId("/api/user_profiles/"),
+          ],
+        },
+        async (req) => {
+          const user_profile = await repo.updateUserProfileById(
+            req.params,
+            req.body,
+            req.claims?.role,
+          );
+          return {
+            user_profile_id: user_profile.user_profile_id,
+            message: "updated",
+          };
+        },
+      );
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/user_profiles/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: [
+            requireRoles(["admin", "guest", "speaker", "staff"]),
+            sameId("/api/user_profiles/"),
+          ],
+        },
+        async (req) => {
+          await repo.deleteUserProfileById(req.params);
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- UserAuth routes -----
+
+      typedApi.post<{ Body: UserAuthLogin }>(
+        "/login",
+        { schema: { body: ZUserAuthLogin } },
+        async (req, res) => {
+          const user_profile_id = await repo.loginUserAuth(req.body);
+          if (!user_profile_id) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "wrong login or password",
+            );
+          }
+          const user_profile_role = (
+            await repo.readUserProfileById({
+              id: user_profile_id,
+            })
+          ).user_profile_role;
+          const token = await tokenManager.encode(
+            {
+              sub: user_profile_id,
+              role: user_profile_role,
+            },
+            false,
+          );
+          res.setCookie("access_token", token, {
+            secure: false,
+            sameSite: "lax",
+            path: "/",
+            expires: addHours(new Date(), 1),
+          });
+          res.status(204);
+        },
+      );
+
+      typedApi.post<{ Body: UserAuthWithoutId }>(
+        "/user_auths",
+        { schema: { body: ZUserAuthWithoutId } },
+        async (req) => {
+          const user_auth = await repo.createUserAuth(req.body);
+          return { user_auth_id: user_auth.user_auth_id, message: "created" };
+        },
+      );
+
+      typedApi.get(
+        "/user_auths",
+        { preHandler: requireRoles(["admin"]) },
+        async () => {
+          return await repo.readAllUserAuth();
+        },
+      );
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/user_auths/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: [
+            requireRoles(["admin", "guest", "speaker", "staff"]),
+            sameId("/api/user_auths/"),
+          ],
+        },
+        async (req) => {
+          return await repo.readUserAuthById(req.params);
+        },
+      );
+
+      typedApi.put<{ Params: ObjectId; Body: PartialUserAuthWithoutId }>(
+        "/user_auths/:id",
+        {
+          schema: { params: ZObjectId, body: ZPartialUserAuthWithoutId },
+          preHandler: [
+            requireRoles(["admin", "guest", "speaker", "staff"]),
+            sameId("/api/user_auths/"),
+          ],
+        },
+        async (req) => {
+          const user_auth = await repo.updateUserAuthById(req.params, req.body);
+          return { user_auth_id: user_auth.user_auth_id, message: "updated" };
+        },
+      );
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/user_auths/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: [
+            requireRoles(["admin", "guest", "speaker", "staff"]),
+            sameId("/api/user_auths/"),
+          ],
+        },
+        async (req) => {
+          await repo.deleteUserAuthById(req.params);
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- Room routes -----
+
+      typedApi.post<{ Body: RoomWithoutId }>(
+        "/rooms",
+        {
+          schema: { body: ZRoomWithoutId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          const room = await repo.createRoom(req.body);
+          return { room_id: room.room_id, message: "created" };
+        },
+      );
+
+      typedApi.get("/rooms", async () => {
+        return await repo.readAllRooms();
+      });
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/rooms/:id",
+        { schema: { params: ZObjectId } },
+        async (req) => {
+          return await repo.readRoomById(req.params);
+        },
+      );
+
+      typedApi.put<{ Params: ObjectId; Body: PartialRoomWithoutId }>(
+        "/rooms/:id",
+        {
+          schema: { params: ZObjectId, body: ZPartialRoomWithoutId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          const room = await repo.updateRoomById(req.params, req.body);
+          return { room_id: room.room_id, message: "updated" };
+        },
+      );
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/rooms/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          await repo.deleteRoomById(req.params);
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- Register routes -----
+
+      typedApi.post<{ Params: ObjectId }>(
+        "/registers/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "guest"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          await repo.createRegister({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { message: "registered" };
+        },
+      );
+
+      typedApi.get("/registers", async () => {
+        return await repo.readAllRegister();
+      });
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/registers/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "guest"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          await repo.deleteRegister({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- Run routes -----
+
+      typedApi.post<{ Params: ObjectId }>(
+        "/runs/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "speaker"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          await repo.createRun({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { message: "added" };
+        },
+      );
+
+      typedApi.get("/runs", async () => {
+        return await repo.readAllRuns();
+      });
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/runs/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "speaker"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          await repo.deleteRun({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- Favorite routes -----
+
+      typedApi.post<{ Params: ObjectId }>(
+        "/favorites/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "staff", "speaker", "guest"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          await repo.createFavorite({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { message: "added" };
+        },
+      );
+
+      typedApi.get("/favorites", async () => {
+        return await repo.readAllFavorites();
+      });
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/favorites/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "staff", "speaker", "guest"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          await repo.deleteFavorite({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { message: "deleted" };
+        },
+      );
+
+      // ----- Queue routes -----
+
+      typedApi.post<{ Params: ObjectId }>(
+        "/queues/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "guest"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          const queue = await repo.createQueue({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { position: queue.position, message: "added" };
+        },
+      );
+
+      typedApi.get("/queues", async () => {
+        return await repo.readAllQueues();
+      });
+
+      typedApi.delete<{ Params: ObjectId }>(
+        "/queues/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "guest"]),
+        },
+        async (req) => {
+          if (!req.claims) {
+            throw new CustomError(
+              "LOGIC",
+              HttpStatus.UNAUTHORIZED,
+              "unauthorized",
+            );
+          }
+          const queue = await repo.deleteQueue({
+            user_profile_id: req.claims.sub,
+            activity_id: req.params.id,
+          });
+          return { position: queue.position, message: "deleted" };
+        },
+      );
+
+      typedApi.get(
+        "/queues_to_register",
+        { preHandler: requireRoles(["admin", "staff"]) },
+        async (_req, res) => {
+          await repo.queueToRegister();
+          res.code(204);
+        },
+      );
+
+      typedApi.get(
+        "/queues_positions",
+        { preHandler: requireRoles(["admin", "staff"]) },
+        async (_req, res) => {
+          await repo.cleanPosition();
+          res.code(204);
+        },
+      );
+
+      // ----- Check-in routes -----
+
+      typedApi.post<{ Params: CheckinParams }>(
+        "/checkin/:activity_id/:user_profile_id",
+        {
+          schema: { params: ZCheckinParams },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          await repo.checkInParticipant({
+            user_profile_id: req.params.user_profile_id,
+            activity_id: req.params.activity_id,
+          });
+          return { message: "checked in" };
+        },
+      );
+
+      typedApi.get<{ Params: ObjectId }>(
+        "/participants/:id",
+        {
+          schema: { params: ZObjectId },
+          preHandler: requireRoles(["admin", "staff"]),
+        },
+        async (req) => {
+          return await repo.readParticipantsByActivityId(req.params);
+        },
+      );
     },
+    { prefix: "/api" },
   );
 
-  web_server.post<{ Body: UserAuthWithoutId }>(
-    "/user_auths",
-    { schema: { body: ZUserAuthWithoutId } },
-    async (req) => {
-      const user_auth = await repo.createUserAuth(req.body);
-      return { user_auth_id: user_auth.user_auth_id, message: "created" };
-    },
-  );
+  // ----- SPA fallback -----
 
-  web_server.get(
-    "/user_auths",
-    { preHandler: requireRoles(["admin"]) },
-    async () => {
-      return await repo.readAllUserAuth();
-    },
-  );
-
-  web_server.get<{ Params: ObjectId }>(
-    "/user_auths/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: [
-        requireRoles(["admin", "guest", "speaker", "staff"]),
-        sameId("/user_auths/"),
-      ],
-    },
-    async (req) => {
-      return await repo.readUserAuthById(req.params);
-    },
-  );
-
-  web_server.put<{ Params: ObjectId; Body: PartialUserAuthWithoutId }>(
-    "/user_auths/:id",
-    {
-      schema: { params: ZObjectId, body: ZPartialUserAuthWithoutId },
-      preHandler: [
-        requireRoles(["admin", "guest", "speaker", "staff"]),
-        sameId("/user_auths/"),
-      ],
-    },
-    async (req) => {
-      const user_auth = await repo.updateUserAuthById(req.params, req.body);
-      return { user_auth_id: user_auth.user_auth_id, message: "updated" };
-    },
-  );
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/user_auths/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: [
-        requireRoles(["admin", "guest", "speaker", "staff"]),
-        sameId("/user_auths/"),
-      ],
-    },
-    async (req) => {
-      await repo.deleteUserAuthById(req.params);
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- Room routes -----
-
-  web_server.post<{ Body: RoomWithoutId }>(
-    "/rooms",
-    {
-      schema: { body: ZRoomWithoutId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      const room = await repo.createRoom(req.body);
-      return { room_id: room.room_id, message: "created" };
-    },
-  );
-
-  web_server.get("/rooms", async () => {
-    return await repo.readAllRooms();
+  web_server.setNotFoundHandler(async (req, reply) => {
+    if (req.originalUrl.startsWith("/api")) {
+      reply.code(404);
+      return { message: "Not found" };
+    }
+    return reply.sendFile("index.html");
   });
-
-  web_server.get<{ Params: ObjectId }>(
-    "/rooms/:id",
-    { schema: { params: ZObjectId } },
-    async (req) => {
-      return await repo.readRoomById(req.params);
-    },
-  );
-
-  web_server.put<{ Params: ObjectId; Body: PartialRoomWithoutId }>(
-    "/rooms/:id",
-    {
-      schema: { params: ZObjectId, body: ZPartialRoomWithoutId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      const room = await repo.updateRoomById(req.params, req.body);
-      return { room_id: room.room_id, message: "updated" };
-    },
-  );
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/rooms/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      await repo.deleteRoomById(req.params);
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- Register routes -----
-
-  web_server.post<{ Params: ObjectId }>(
-    "/registers/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "guest"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      await repo.createRegister({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { message: "registered" };
-    },
-  );
-
-  web_server.get("/registers", async () => {
-    return await repo.readAllRegister();
-  });
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/registers/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "guest"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      await repo.deleteRegister({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- Run routes -----
-
-  web_server.post<{ Params: ObjectId }>(
-    "/runs/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "speaker"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      await repo.createRun({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { message: "added" };
-    },
-  );
-
-  web_server.get("/runs", async () => {
-    return await repo.readAllRuns();
-  });
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/runs/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "speaker"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      await repo.deleteRun({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- Favorite routes -----
-
-  web_server.post<{ Params: ObjectId }>(
-    "/favorites/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "staff", "speaker", "guest"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      await repo.createFavorite({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { message: "added" };
-    },
-  );
-
-  web_server.get("/favorites", async () => {
-    return await repo.readAllFavorites();
-  });
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/favorites/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "staff", "speaker", "guest"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      await repo.deleteFavorite({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { message: "deleted" };
-    },
-  );
-
-  // ----- Queue routes -----
-
-  web_server.post<{ Params: ObjectId }>(
-    "/queues/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "guest"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      const queue = await repo.createQueue({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { position: queue.position, message: "added" };
-    },
-  );
-
-  web_server.get("/queues", async () => {
-    return await repo.readAllQueues();
-  });
-
-  web_server.delete<{ Params: ObjectId }>(
-    "/queues/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "guest"]),
-    },
-    async (req) => {
-      if (!req.claims) {
-        throw new CustomError("LOGIC", HttpStatus.UNAUTHORIZED, "unauthorized");
-      }
-      const queue = await repo.deleteQueue({
-        user_profile_id: req.claims.sub,
-        activity_id: req.params.id,
-      });
-      return { position: queue.position, message: "deleted" };
-    },
-  );
-
-  web_server.get(
-    "/queues_to_register",
-    { preHandler: requireRoles(["admin", "staff"]) },
-    async (_req, res) => {
-      await repo.queueToRegister();
-      res.code(204);
-    },
-  );
-
-  web_server.get(
-    "/queues_positions",
-    { preHandler: requireRoles(["admin", "staff"]) },
-    async (_req, res) => {
-      await repo.cleanPosition();
-      res.code(204);
-    },
-  );
-
-  // ----- Check-in routes -----
-
-  web_server.post<{ Params: CheckinParams }>(
-    "/checkin/:activity_id/:user_profile_id",
-    {
-      schema: { params: ZCheckinParams },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      await repo.checkInParticipant({
-        user_profile_id: req.params.user_profile_id,
-        activity_id: req.params.activity_id,
-      });
-      return { message: "checked in" };
-    },
-  );
-
-  web_server.get<{ Params: ObjectId }>(
-    "/participants/:id",
-    {
-      schema: { params: ZObjectId },
-      preHandler: requireRoles(["admin", "staff"]),
-    },
-    async (req) => {
-      return await repo.readParticipantsByActivityId(req.params);
-    },
-  );
 
   // ----- Listen -----
 
